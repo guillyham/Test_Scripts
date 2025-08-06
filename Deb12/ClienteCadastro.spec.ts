@@ -1,6 +1,6 @@
 import { test, expect, Locator, Page, Frame} from '@playwright/test';
 
-import { randomSelect, randomSelect2, validateFields, login } from '../lib/utils';
+import { randomSelect, randomSelect2, validateFields} from '../lib/utils';
 
 /*
 Fluxo:
@@ -8,6 +8,17 @@ Cadatra o cliente
 |_Preenche campos obrigatórios quando tiver
 Adiciona contrato e deixa o mesmo ativo ss
 */
+
+async function login(page) {
+  const usuario = process.env.USUARIO;
+  const senha = process.env.SENHA;
+
+  await page.goto('https://desenv-deb12.rbxsoft.com/routerbox/app_login/index.php');
+  await page.getByRole('textbox', { name: 'Usuário' }).fill(usuario);
+  await page.getByRole('textbox', { name: 'Senha' }).fill(senha);
+  await page.getByRole('textbox', { name: 'Senha' }).press('Enter');
+}
+
 
 function getFrames(page: Page) {
   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
