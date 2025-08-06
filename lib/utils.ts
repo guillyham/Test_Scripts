@@ -2,7 +2,7 @@ import { expect, Locator, Page, Frame } from '@playwright/test';
   require('dotenv').config();
 
 
-export async function seletorRandomSelct(menu: any, selectSelector: string) {
+export async function randomSelect(menu: any, selectSelector: string) {
   const options = menu.locator(`${selectSelector} > option`);
   const count = await options.count();
 
@@ -22,7 +22,7 @@ export async function seletorRandomSelct(menu: any, selectSelector: string) {
   await menu.locator(selectSelector).selectOption({ value: randomValue });
 }
 
-export async function seletorRandomSelct2(menu: Page | Frame, dropdownTriggerSelector: string, blacklist: string[] = []): Promise<string> {
+export async function randomSelect2(menu: Page | Frame, dropdownTriggerSelector: string, blacklist: string[] = []): Promise<string> {
   const trigger = menu.locator(dropdownTriggerSelector);
   await expect(trigger).toBeVisible();
   await trigger.click();
@@ -56,7 +56,7 @@ export async function seletorRandomSelct2(menu: Page | Frame, dropdownTriggerSel
   return random.text;
 }
 
-export async function validaCampoPreenchidos(locator: Locator, timeout = 10000) {
+export async function validateFields(locator: Locator, timeout = 10000) {
   try {
     await expect(locator).toHaveValue(/.+/, { timeout });
   } catch {
