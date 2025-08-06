@@ -1,6 +1,5 @@
 import { test, expect, Locator, Page, Frame} from '@playwright/test';
-
-import { seletorRandomSelct, seletorRandomSelct2, login, validaCampoPreenchidos } from '../lib/utils';
+import { randomSelect, randomSelect2, login, validateFields } from '../lib/utils';
 
 /*
 Fluxo:
@@ -53,7 +52,7 @@ async function preencherCampos(page, newPage, menu) {
   await menu.locator('#id_sc_field_nome').click();
   await page.keyboard.press('Control+V');
   const nomeInput = menu.locator('#id_sc_field_nome'); 
-  await validaCampoPreenchidos(nomeInput);//so procede apos o campo nome ter valor.
+  await validateFields(nomeInput);//so procede apos o campo nome ter valor.
 
   await newPage.bringToFront();
   await newPage.locator('#cpf span').nth(1).click();
@@ -61,7 +60,7 @@ async function preencherCampos(page, newPage, menu) {
   await menu.locator('#id_sc_field_br_cnpj_cnpf').click();
   await page.keyboard.press('Control+V');
   const cpf_cnpjInput = menu.locator('#id_sc_field_br_cnpj_cnpf'); 
-  await validaCampoPreenchidos(cpf_cnpjInput);//so procede apos o campo cpf_cnpj ter valor.
+  await validateFields(cpf_cnpjInput);//so procede apos o campo cpf_cnpj ter valor.
 
   await newPage.bringToFront();
   await newPage.locator('#cep span').nth(1).click();
@@ -70,11 +69,11 @@ async function preencherCampos(page, newPage, menu) {
   await page.keyboard.press('Control+V');
 
   const cepInput = menu.locator('#id_sc_field_br_cep'); 
-  await validaCampoPreenchidos(cepInput);//so procede apos o campo cep ter valor.
+  await validateFields(cepInput);//so procede apos o campo cep ter valor.
 
   await menu.locator('#id_sc_field_endereco').click();
   const enderecoInput = menu.locator('#id_sc_field_endereco'); 
-  await validaCampoPreenchidos(enderecoInput);//so procede apos o campo endereco ter valor.
+  await validateFields(enderecoInput);//so procede apos o campo endereco ter valor.
 
   await menu.getByAltText('{datatype: \'text\', maxLength: 20, allowedChars: \'0123456789SsNn/\', lettersCase').click();
   await menu.getByAltText('{datatype: \'text\', maxLength: 20, allowedChars: \'0123456789SsNn/\', lettersCase').fill('123');
@@ -92,7 +91,7 @@ async function preencherCampos(page, newPage, menu) {
   await page.keyboard.press('Control+V');
 
   const emailInput = menu.locator('#id_sc_field_email'); 
-  await validaCampoPreenchidos(emailInput);
+  await validateFields(emailInput);
 
   await menu.locator('#id_sc_field_observacoes').click();
   await page.keyboard.type("Cadastro gerado pelo script!");
@@ -111,7 +110,7 @@ async function camposOpcionais(page, newPage, menu) {
     const grup = (await grupoLabel.textContent())?.trim() ?? '';
 
     if (grup && grup.includes("*")) {
-      const selectedValue = await seletorRandomSelct2(menu, '[aria-labelledby="select2-id_sc_field_grupo-container"]', ['padrão']);
+      const selectedValue = await randomSelect2(menu, '[aria-labelledby="select2-id_sc_field_grupo-container"]', ['padrão']);
 
       const displayed = await menu.locator('#select2-id_sc_field_grupo-container').textContent();
       expect(displayed?.trim()).toBe(selectedValue);
@@ -128,21 +127,21 @@ async function camposOpcionais(page, newPage, menu) {
       await menu.locator('#id_sc_field_br_cobr_cep').fill(cepOrig.trim());
       
       const CEPInput = menu.locator('#id_sc_field_br_cobr_cep');
-      await validaCampoPreenchidos(CEPInput);
+      await validateFields(CEPInput);
 
       const cobrNumeroText = menu.locator('#id_sc_field_cobr_numero');
       await cobrNumeroText.click();
 
       const cobrCidadeInput = menu.locator('#id_sc_field_cobr_cidade');
-      await validaCampoPreenchidos(cobrCidadeInput);
+      await validateFields(cobrCidadeInput);
       
       await page.keyboard.type('1');
 
       const cobrEndInpu = menu.locator('#id_sc_field_cobr_endereco');
-      await validaCampoPreenchidos(cobrEndInpu);
+      await validateFields(cobrEndInpu);
 
       const cobrNumeroInot = menu.locator('#id_sc_field_cobr_numero');
-      await validaCampoPreenchidos(cobrNumeroInot);
+      await validateFields(cobrNumeroInot);
       }
     }
 
@@ -157,7 +156,7 @@ async function camposOpcionais(page, newPage, menu) {
       await page.keyboard.type("Felipe Was Here! Complemento Cobr.");
       
       const cobrComplementoInput = menu.locator('#id_sc_field_cobr_complemento');
-      await validaCampoPreenchidos(cobrComplementoInput);
+      await validateFields(cobrComplementoInput);
     }
   }
 
@@ -174,7 +173,7 @@ async function camposOpcionais(page, newPage, menu) {
       await page.keyboard.press('Control+V');
 
       const nascimentoInput = menu.locator('#id_sc_field_nascimento'); 
-      await validaCampoPreenchidos(nascimentoInput);
+      await validateFields(nascimentoInput);
     }
   }
 
@@ -189,7 +188,7 @@ async function camposOpcionais(page, newPage, menu) {
       await page.keyboard.type("ISENTO");
 
       const rgInput = menu.locator('#id_sc_field_rg_ie'); 
-      await validaCampoPreenchidos(rgInput);
+      await validateFields(rgInput);
     }
   }
 
@@ -207,7 +206,7 @@ async function camposOpcionais(page, newPage, menu) {
       await page.keyboard.press('Control+V');
 
       const siglaInput = menu.locator('#id_sc_field_sigla'); 
-      await validaCampoPreenchidos(siglaInput);
+      await validateFields(siglaInput);
     }
   }
 
@@ -222,7 +221,7 @@ async function camposOpcionais(page, newPage, menu) {
       await page.keyboard.type("Felipe Was Here! Complemento.");
 
       const complementoInput = menu.locator('#id_label_complemento'); 
-      await validaCampoPreenchidos(complementoInput);
+      await validateFields(complementoInput);
     }
   }
 
@@ -237,7 +236,7 @@ async function camposOpcionais(page, newPage, menu) {
       await page.keyboard.type("Felipe Was Here! Distrito.");
 
       const distritoInput = menu.locator('#id_label_distrito'); 
-      await validaCampoPreenchidos(distritoInput);
+      await validateFields(distritoInput);
     }
   }
 
@@ -252,7 +251,7 @@ async function camposOpcionais(page, newPage, menu) {
       await page.keyboard.type("4432323232");
 
       const tComercialInput = menu.locator('#id_sc_field_telcomercial'); 
-      await validaCampoPreenchidos(tComercialInput);
+      await validateFields(tComercialInput);
     }
   }
 
@@ -267,7 +266,7 @@ async function camposOpcionais(page, newPage, menu) {
       await page.keyboard.type("4432323232");
 
       const tResidInput = menu.locator('#id_sc_field_telresidencial'); 
-      await validaCampoPreenchidos(tResidInput);
+      await validateFields(tResidInput);
     }
   }
 
@@ -282,7 +281,7 @@ async function camposOpcionais(page, newPage, menu) {
       await page.keyboard.type("44999123456");
       
       const tCelularInput = menu.locator('#id_sc_field_telcelular'); 
-      await validaCampoPreenchidos(tCelularInput);    
+      await validateFields(tCelularInput);    
     }
   }  
 
@@ -294,10 +293,10 @@ async function camposOpcionais(page, newPage, menu) {
     const grupCobr = (await grupoCobrLabel.textContent())?.trim() ?? '';
 
     if (grupCobr && grupCobr.includes("*")) {
-      const selectedValue = await seletorRandomSelct2(menu,'[aria-labelledby="select2-id_sc_field_cobr_grupo-container"]', ['padrão']);
+      const selectedValue = await randomSelect2(menu,'[aria-labelledby="select2-id_sc_field_cobr_grupo-container"]', ['padrão']);
 
       const grupCobrInput = menu.locator('#select2-id_sc_field_cobr_grupo-container');
-      await validaCampoPreenchidos(grupCobrInput); 
+      await validateFields(grupCobrInput); 
     }
   }
 
@@ -308,10 +307,10 @@ async function camposOpcionais(page, newPage, menu) {
     const venc = await diaVencLabel.textContent();
 
     if (venc && venc.includes("*")) {
-      const selectedValue = await seletorRandomSelct(menu, '#id_sc_field_diacobr');
+      const selectedValue = await randomSelect(menu, '#id_sc_field_diacobr');
 
       const diaVencInput = menu.locator('#id_sc_field_diacobr');
-      await validaCampoPreenchidos(diaVencInput); 
+      await validateFields(diaVencInput); 
     }
   }
 
@@ -322,10 +321,10 @@ async function camposOpcionais(page, newPage, menu) {
     const cfop = await cfopLabel.textContent();
 
     if (cfop && cfop.includes("*")) {
-      const selectedValue = await seletorRandomSelct(menu, '#id_sc_field_nfcfop');
+      const selectedValue = await randomSelect(menu, '#id_sc_field_nfcfop');
 
       const cfopInput = menu.locator('#id_sc_field_nfcfop');
-      await validaCampoPreenchidos(cfopInput); 
+      await validateFields(cfopInput); 
     }
   }
 }
@@ -403,7 +402,7 @@ async function contratoDinamicoStart(page, menu, item5, tb) {
   await expect(realTrigger).toBeVisible();
   await realTrigger.click();
 
-  const selectedValue = await seletorRandomSelct2(tb, '#select2-id_sc_field_plano-container', ['padrão']);
+  const selectedValue = await randomSelect2(tb, '#select2-id_sc_field_plano-container', ['padrão']);
   const displayed = await tb.locator('#select2-id_sc_field_plano-container').textContent();
   expect(displayed?.trim()).toBe(selectedValue);
 
@@ -429,14 +428,14 @@ async function camposOpcionaisContratos(page, newPage, tb, item5, menu) {
         await page.keyboard.press('Control+V');
 
         const CEPInput = menu.locator('#id_sc_field_cep');
-        await validaCampoPreenchidos(CEPInput);
+        await validateFields(CEPInput);
 
         const contrNumeroTxt = menu.locator('#id_sc_field_numend');
         await contrNumeroTxt.click();
         await page.keyboard.type('123');
 
         const contrCidadeInput = menu.locator('#id_sc_field_cidade');
-        await validaCampoPreenchidos(contrCidadeInput);
+        await validateFields(contrCidadeInput);
     }
   }
 
@@ -456,14 +455,14 @@ async function camposOpcionaisContratos(page, newPage, tb, item5, menu) {
         await page.keyboard.press('Control+V');
 
         const CEPInput = menu.locator('#id_sc_field_cobr_cep');
-        await validaCampoPreenchidos(CEPInput);
+        await validateFields(CEPInput);
 
         const contrNumeroTxt = menu.locator('#id_sc_field_cobr_numend');
         await contrNumeroTxt.click();
         await page.keyboard.type('321');
 
         const contrCidadeInput = menu.locator('#id_sc_field_cobr_cidade');
-        await validaCampoPreenchidos(contrCidadeInput);
+        await validateFields(contrCidadeInput);
     }
   }
 }
