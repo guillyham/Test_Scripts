@@ -143,7 +143,7 @@ async function camposOpcionais(page, newPage, menu) {
       const cobrNumeroInot = menu.locator('#id_sc_field_cobr_numero');
       await validateFields(cobrNumeroInot);
       }
-    }
+  }
 
   //Completo Cobrança
   {  
@@ -284,7 +284,6 @@ async function camposOpcionais(page, newPage, menu) {
       await validateFields(tCelularInput);    
     }
   }  
-
 
   //Grupo Cobr
   {
