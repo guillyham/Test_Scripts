@@ -1,5 +1,13 @@
 import { test, expect, Locator, Page, Frame} from '@playwright/test';
-import { randomSelect, randomSelect2, login, validateFields } from '../lib/utils';
+import { randomSelect, randomSelect2, login, validateFields, waitForAjax, retryUntil, } from '../lib/utils';
+/*
+FLuxo do teste:
+  1 - Acessar o sistema
+  2 - Acessar o menu Empresa > Clientes > Planos  
+  3 - Clicar em novo
+  4 - Preencher os campos obrigatórios
+  5 - Finalizar o cadastro
+*/
 
 async function novoPlano(page, menu) {
   await page.getByText('x', { exact: true }).click();
@@ -13,7 +21,7 @@ async function novoPlano(page, menu) {
   await menu.locator('#sc_b_new_top').click();
 }
 
-async function incluirRegistro(menu) {
+async function incluirRegistro(page, menu) {
   await menu.locator('#id_label_descricao').waitFor({ state: 'visible' });
   await menu.locator('#id_sc_field_descricao').fill('Plano Teste');
   const nomePlano = menu.locator('#id_sc_field_descricao');
@@ -34,7 +42,8 @@ async function incluirRegistro(menu) {
   await randomSelect(menu, '#id_sc_field_tipo');
   const tipoInput = menu.locator('#id_sc_field_tipo');
   await validateFields(tipoInput); 
-    if (await tipoInput.inputValue() === 'T') {
+    if (await tipoInput.inputValue() === 'T') //caso seja do tipo 'Telefonia'
+      {
       const qosSelector = '#select2-id_sc_field_qos-container';
       await randomSelect2(menu, qosSelector, ['selecione', '(selecione)']);
       const qosInput = menu.locator(qosSelector);
@@ -42,39 +51,101 @@ async function incluirRegistro(menu) {
       
       await menu.locator('#sc_b_ins_t').click( );//finaliza o cadastro
     }
-  else {
+  else 
+    { 
       const qosSelector = '#select2-id_sc_field_qos-container';
       await randomSelect2(menu, qosSelector, ['selecione', '(selecione)']);
+      await waitForAjax(page);
       const qosInput = menu.locator(qosSelector);
       await validateFields(qosInput);
 
-      const tipoProdutoSelector = menu.locator('#id_sc_field_siciproduto');
-      await randomSelect2(menu, tipoProdutoSelector, ['selecione', '(selecione)']);
+      const meioTranmissaoSelectorStr = '#id_read_off_sicimeiotransmissao';
+      const tmeioTranmissaoSelector = menu.locator(meioTranmissaoSelectorStr);
+      await tmeioTranmissaoSelector.waitFor({ state: 'visible' });
+      const transmissaoIds = 
+      [
+        '#id-opt-sicimeiotransmissao-0', // cabo_coaxial
+        '#id-opt-sicimeiotransmissao-1', // cabo_metalico
+        '#id-opt-sicimeiotransmissao-2', // fibra
+        '#id-opt-sicimeiotransmissao-3', // radio
+        '#id-opt-sicimeiotransmissao-4', // satelite
+      ];
+
+      for (const id of transmissaoIds) {
+        const checkboxT = menu.locator(id);
+        await expect(checkboxT).toBeVisible();
+
+        if (!(await checkboxT.isChecked())) {
+          await checkboxT.check();
+        }
+        await retryUntil(async () => {
+          return await checkboxT.isChecked();
+        }, { timeout: 5000, interval: 200 });
+
+        await validateFields(checkboxT); 
+      }
+      await waitForAjax(page, ); 
+
+
+      const tecnologiaSelectorStr = '#id_read_off_sicitecnologia';
+      const tecnologiaSelector = menu.locator(tecnologiaSelectorStr);
+      await tecnologiaSelector.waitFor({ state: 'visible' });
+      const tecnologiaIds = 
+      [
+        '#id-opt-sicitecnologia-0', // ETHERNET
+        '#id-opt-sicitecnologia-1', // FTTH
+        '#id-opt-sicitecnologia-2', // NR
+      ];
+
+      for (const id of tecnologiaIds) {
+        const checkbox = menu.locator(id);
+        await expect(checkbox).toBeVisible();
+
+        if (!(await checkbox.isChecked())) {
+          await checkbox.check();
+        }
+
+        await retryUntil(async () => {
+          return await checkbox.isChecked();
+        }, { timeout: 5000, interval: 200 });
+
+        await validateFields(checkbox);
+      }
+      await waitForAjax(page); 
+      
+      const tipoProdutoSelector = '#id_sc_field_siciproduto';
+      await randomSelect(menu, tipoProdutoSelector, ['selecione', '(selecione)']);
+      await waitForAjax(page)
       const tipoProdutoInput = menu.locator(tipoProdutoSelector);
       await validateFields(tipoProdutoInput);
 
-      await menu.locator('#id-opt-sicitecnologia-0').check();
-      const tecnologiaInput = menu.locator('#id-opt-sicitecnologia-0');
-      await validateFields(tecnologiaInput);
-
-      const tecnologiaSelector = menu.locator('#id_sc_field_sicitecnologiapadrao');
-      await randomSelect2(menu, tecnologiaSelector, ['selecione', '(selecione)']);
-      const tecnologiaSelectorInput = menu.locator(tecnologiaSelector);
+      const tecnologiaSelector2 = '#id_sc_field_sicitecnologiapadrao';
+      await randomSelect(menu, tecnologiaSelector2, ['selecione', '(selecione)']);
+      await waitForAjax(page)
+      const tecnologiaSelectorInput = menu.locator(tecnologiaSelector2);
       await validateFields(tecnologiaSelectorInput);
+
+      const meioTransmissaoSelector = '#id_sc_field_sicimeiotransmissaopadrao';
+      await randomSelect(menu, meioTransmissaoSelector, ['selecione', '(selecione)']);
+      await waitForAjax(page)
+      const meioTransmissaoSelectorInput = menu.locator(meioTransmissaoSelector);
+      await validateFields(meioTransmissaoSelectorInput);
+
+      await menu.locator('#sc_b_ins_t').click( );//finaliza o cadastro
     }
 }
 
 // Fluxo principal do teste
-test('Cadastro de planos', async ({ page, context }) => {
+test('Cadastro de planos', async ({ page }) => {
   // Gera o cache dos itens do inspetor.
   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
   const item5 = menu.frameLocator('iframe[name="item_5"]');
   const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
 
-  test.setTimeout(20000);
+  test.setTimeout(50000);
 
   await login(page);
   await novoPlano(page,menu);
-  await incluirRegistro(menu);
+  await incluirRegistro(page,menu);
   
 });

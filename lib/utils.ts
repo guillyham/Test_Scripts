@@ -158,3 +158,56 @@ export async function login(page) {
   await page.getByRole('textbox', { name: 'Senha' }).press('Enter');
 }
 
+export async function waitForAjax(
+  page: Page,
+  minDelay: number = 1000, // valor pode ser ajustado conforme necessário na chamada da função
+  spinnerSelectors: string[] = ['.ajax-loader', '.blockUI', '.loading']
+): Promise<void> {
+  const start = Date.now();
+  const timeout = 1000;
+  const endTime = start + timeout;
+  //rmover comentario para debug
+  //console.log('WAITING FOR AJAX');
+
+  for (const selector of spinnerSelectors) {
+    const spinner = page.locator(selector);
+    try {
+      await spinner.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+      await spinner.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+    } catch (e) {
+      // nao deveria dar erro, mas se der, ignora
+    }
+  }
+
+  //Esse entra em ação caso o ajax nao tenha spinner visível
+  const elapsed = Date.now() - start;
+  const remaining = minDelay - elapsed;
+
+  if (remaining > 0) {
+    //rmover comentario para debug
+    //console.log(`WAITING`);
+    await page.waitForTimeout(remaining);
+  }
+  //rmover comentario para debug
+  //console.log('PASS');
+}
+
+export async function retryUntil(
+  fn: () => Promise<boolean>,
+  options: { timeout?: number; interval?: number } = {}
+): Promise<void> {
+  const { timeout = 10000, interval = 250 } = options;
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    try {
+      const result = await fn();
+      if (result) return;
+    } catch {
+      // Ignore errors during retry
+    }
+    await new Promise((res) => setTimeout(res, interval));
+  }
+
+  throw new Error('retryUntil: condition not met within timeout');
+}

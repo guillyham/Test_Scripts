@@ -2,10 +2,10 @@ import { test, expect, Locator, Page, Frame} from '@playwright/test';
 import { randomSelect, randomSelect2, login, validateFields } from '../lib/utils';
 
 /*
-Fluxo:
-Cadatra o cliente
-|_Preenche campos obrigatórios quando tiver
-Adiciona contrato e deixa o mesmo ativo
+Fluxo do teste:
+1 - Cadatra o cliente
+2 - Preenche campos obrigatórios quando tiver
+3 - Adiciona contrato e deixa o mesmo ativo
 */
 
 function getFrames(page: Page) {
