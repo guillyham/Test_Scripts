@@ -84,7 +84,7 @@ async function incluirRegistro(page, menu) {
 
         await validateFields(checkboxT); 
       }
-      await waitForAjax(page, ); 
+      await waitForAjax(page); 
 
 
       const tecnologiaSelectorStr = '#id_read_off_sicitecnologia';
