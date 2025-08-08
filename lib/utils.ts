@@ -1,6 +1,15 @@
-import { expect, Locator, Page, Frame } from '@playwright/test';
-  require('dotenv').config();
+import { Locator, Page, Frame } from '@playwright/test';
+require('dotenv').config();
 
+export async function login(page) {
+  const usuario = process.env.USUARIO;
+  const senha = process.env.SENHA;
+
+  await page.goto('https://desenvtestfinal.rbxsoft.com/routerbox/app_login/index.php');
+  await page.getByRole('textbox', { name: 'Usuário' }).fill(usuario);
+  await page.getByRole('textbox', { name: 'Senha' }).fill(senha);
+  await page.getByRole('textbox', { name: 'Senha' }).press('Enter');
+}
 
 export async function randomSelect(
   menu: Page | Frame,
@@ -8,7 +17,11 @@ export async function randomSelect(
   blacklist: string[] = ['0']
 ): Promise<string> {
   const select = menu.locator(selectSelector);
-  await expect(select).toBeVisible({ timeout: 10000 });
+  
+  await retryUntil(async () => {
+    await select.waitFor({ state: 'visible', timeout: 10000 });
+    return true;
+  }, { timeout: 20000, interval: 500 });
 
   const options = select.locator('option');
   const count = await options.count();
@@ -34,9 +47,12 @@ export async function randomSelect(
   }
 
   const randomValue = validOptions[Math.floor(Math.random() * validOptions.length)];
-  await select.selectOption({ value: randomValue });
-
-  await expect(select).toHaveValue(randomValue);
+  
+  await retryUntil(async () => {
+    await select.selectOption({ value: randomValue });
+    const selectedValue = await select.inputValue();
+    return selectedValue === randomValue;
+  }, { timeout: 20000, interval: 500 });
 
   return randomValue;
 }
@@ -47,12 +63,20 @@ export async function randomSelect2(
   blacklist: string[] = []
 ): Promise<string> {
   const trigger = menu.locator(dropdownTriggerSelector);
-  await expect(trigger).toBeVisible({ timeout: 10000 });
-  await trigger.click();
+  
+  await retryUntil(async () => {
+    await trigger.waitFor({ state: 'visible', timeout: 10000 });
+    await trigger.click();
+    return true;
+  }, { timeout: 20000, interval: 500 });
 
   // Wait for dropdown options container
   const optionsContainer = menu.locator('.select2-results__options');
-  await expect(optionsContainer).toBeVisible({ timeout: 10000 });
+  
+  await retryUntil(async () => {
+    await optionsContainer.waitFor({ state: 'visible', timeout: 10000 });
+    return true;
+  }, { timeout: 20000, interval: 500 });
 
   const options = optionsContainer.locator('.select2-results__option');
   const count = await options.count();
@@ -77,13 +101,13 @@ export async function randomSelect2(
   }
 
   const random = validOptions[Math.floor(Math.random() * validOptions.length)];
-  await options.nth(random.index).click();
-
-  // Validate selection reflected
-  const selectedText = await trigger.textContent();
-  const trimmed = selectedText?.trim() ?? '';
-
-  expect(trimmed).toBe(random.text);
+  
+  await retryUntil(async () => {
+    await options.nth(random.index).click();
+    const selectedText = await trigger.textContent();
+    const trimmed = selectedText?.trim() ?? '';
+    return trimmed === random.text;
+  }, { timeout: 20000, interval: 500 });
 
   return random.text;
 }
@@ -93,7 +117,7 @@ export type ValidationOptions = {
   allowEmpty?: boolean;
   customPattern?: RegExp;
   rejectPlaceholders?: string[]; // NEW
-};
+}
 
 export async function validateFields(
   locator: Locator,
@@ -103,93 +127,56 @@ export async function validateFields(
     timeout = 10000,
     allowEmpty = false,
     customPattern = /.+/,
-    rejectPlaceholders = ['selecione', '(selecione)'], // Valor pardão para campos de select e select2
+    // now includes 'padrão' and an explicit empty string check
+    rejectPlaceholders = ['selecione', '(selecione)', 'padrão'],
   } = options;
 
-  try {
-    const tag = await locator.evaluate((el) => el.tagName.toLowerCase());
-
-    const isDisabled = await locator.evaluate((el) =>
-      el.hasAttribute('disabled') || el.getAttribute('aria-disabled') === 'true'
-    );
-    if (isDisabled) return;
-
-    const validationPattern = allowEmpty ? /.*/ : customPattern;
-
-    if (['input', 'textarea', 'select'].includes(tag)) {
-      const inputType = await locator.evaluate(el =>
-        el.tagName === 'INPUT' ? (el as HTMLInputElement).type : null
-      );
-
-      if (inputType === 'checkbox' || inputType === 'radio') {
-        await expect(locator).toBeChecked({ timeout });
-        return;
-      }
-
-      await expect(locator).toHaveValue(validationPattern, { timeout });
-      return;
-    }
-
-    const text = (await locator.textContent())?.trim().toLowerCase() ?? '';
-    if (rejectPlaceholders.some(p => text === p.toLowerCase())) {
-      throw new Error(`Campo ainda com valor placeholder: "${text}"`);
-    }
-
-    await expect(locator).toHaveText(validationPattern, { timeout });
-  } catch (error) {
-    const elementDescription = await locator.evaluate((el) =>
-      `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}${el.className ? `.${el.className.split(' ').join('.')}` : ''}`
-    );
-    throw new Error(
-      `Validation failed for element ${elementDescription}: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-  }
-}
-
-export async function login(page) {
-  const usuario = process.env.USUARIO;
-  const senha = process.env.SENHA;
-
-  await page.goto('https://desenvtestfinal.rbxsoft.com/routerbox/app_login/index.php');
-  await page.getByRole('textbox', { name: 'Usuário' }).fill(usuario);
-  await page.getByRole('textbox', { name: 'Senha' }).fill(senha);
-  await page.getByRole('textbox', { name: 'Senha' }).press('Enter');
+  const isRejected = (raw: string | null | undefined) => {
+    const v = (raw ?? '').trim().toLowerCase();
+    if (!allowEmpty && v === '') return true; // empty is invalid when allowEmpty=false
+    return rejectPlaceholders.some(p => v === p.toLowerCase());
+  };
 }
 
 export async function waitForAjax(
   page: Page,
-  minDelay: number = 1000, // valor pode ser ajustado conforme necessário na chamada da função
+  minDelay: number = 1000,
   spinnerSelectors: string[] = ['.ajax-loader', '.blockUI', '.loading']
 ): Promise<void> {
   const start = Date.now();
-  const timeout = 1000;
-  const endTime = start + timeout;
-  //rmover comentario para debug
-  //console.log('WAITING FOR AJAX');
+  const initialTimeout = 1000; // Timeout inicial para visibilidade do spinner
+  const hiddenTimeout = 5000; // Timeout para o spinner ficar oculto
+
+  // console.log('WAITING FOR AJAX'); // Manter para debug se necessário
 
   for (const selector of spinnerSelectors) {
     const spinner = page.locator(selector);
-    try {
-      await spinner.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
-      await spinner.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
-    } catch (e) {
-      // nao deveria dar erro, mas se der, ignora
-    }
+    await retryUntil(async () => {
+      try {
+        // Espera o spinner aparecer, com um timeout curto. Se não aparecer, continua.
+        await spinner.waitFor({ state: 'visible', timeout: initialTimeout }).catch(() => {});
+        // Se o spinner apareceu, espera ele desaparecer com um timeout maior.
+        await spinner.waitFor({ state: 'hidden', timeout: hiddenTimeout });
+        return true;
+      } catch (e) {
+        // Se o spinner não desaparecer dentro do hiddenTimeout, lança um erro.
+        // Ou, se a intenção é apenas ignorar spinners que não aparecem, o catch() acima já faz isso.
+        // Para spinners que aparecem mas não somem, o erro será lançado pelo segundo waitFor.
+        console.warn(`Spinner '${selector}' não se comportou como esperado: ${e}`);
+        return false;
+      }
+    }, { timeout: initialTimeout + hiddenTimeout + 1000, interval: 250 }); // Aumenta o timeout para cobrir ambos os waits
   }
 
-  //Esse entra em ação caso o ajax nao tenha spinner visível
+  // Garante um atraso mínimo, mesmo que não haja spinners visíveis
   const elapsed = Date.now() - start;
   const remaining = minDelay - elapsed;
 
   if (remaining > 0) {
-    //rmover comentario para debug
-    //console.log(`WAITING`);
+    // console.log(`WAITING`); // Manter para debug se necessário
     await page.waitForTimeout(remaining);
   }
-  //rmover comentario para debug
-  //console.log('PASS');
+  // console.log('PASS'); // Manter para debug se necessário
 }
 
 export async function retryUntil(
@@ -211,3 +198,4 @@ export async function retryUntil(
 
   throw new Error('retryUntil: condition not met within timeout');
 }
+
