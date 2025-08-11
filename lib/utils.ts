@@ -199,3 +199,16 @@ export async function retryUntil(
   throw new Error('retryUntil: condition not met within timeout');
 }
 
+// comentário: salva somente se valor mudou e não está vazio
+export async function saveIfChanged(
+  container: Locator,
+  originalValue: string,
+  saveButton: Locator
+) {
+  const newValue = (await container.textContent())?.trim() ?? '';
+  if (newValue && newValue !== originalValue) {
+    await saveButton.click();
+    return true;
+  }
+  return false;
+}
