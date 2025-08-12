@@ -14,10 +14,13 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
+    //teste da base: teste final
     { name: '01-Ajax-Estoque',  testMatch: ['**/TesteFinal/Ajax/validacaoAjaxEstoque.spec.ts'] },
     { name: '02-Ajax-Pedidos',  testMatch: ['**/TesteFinal/Ajax/validacaoAjaxPedidos.spec.ts'], dependencies: ['01-Ajax-Estoque'] },
     { name: '03-Cad-Cliente',   testMatch: ['**/Cad_cliente.spec.ts'], dependencies: ['02-Ajax-Pedidos'], use: { headless: false, launchOptions: { slowMo: 200 } } }, // comentário: headed
     { name: '04-Cad-Planos',    testMatch: ['**/Cad_Planos.spec.ts'], dependencies: ['03-Cad-Cliente'] },
+    
+    // teste da base: deb12
     { name: '05-Cad-Produtos',  testMatch: ['**/deb12/ClienteCadastro.spec.ts'], dependencies: ['04-Cad-Planos'], use: { headless: false, launchOptions: { slowMo: 200 } } }, // comentário: headed} 
   ],
 });
