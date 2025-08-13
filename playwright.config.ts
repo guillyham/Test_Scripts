@@ -1,19 +1,22 @@
-// playwright.config.ts
 import { defineConfig, devices } from '@playwright/test';
+import path from 'path';
+
+const ROOT = path.resolve(__dirname, '..'); // comentário: sobe para a raiz do projeto
 
 export default defineConfig({
-  testDir: '.',
-  fullyParallel: false,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  testDir: '.', // comentário: os testes estão na própria pasta "tests"
+  outputDir: path.join(ROOT, 'test-results'), // comentário: salva na raiz/test-results
+  reporter: [
+    ['html', { outputFolder: path.join(ROOT, 'reports/html'), open: 'never' }], // comentário: raiz/reports/html
+  ],
   use: {
-    //define o navegador padrão
     browserName: 'chromium',
-    ...devices['Desktop Chrome'], 
-    trace: 'on-first-retry',
+    ...devices['Desktop Chrome'],
+    trace: 'on',
+    screenshot: 'on',
+    video: 'retain-on-failure',
   },
+
   projects: [
     //teste da base: teste final
     { name: '01-Ajax-Estoque',  testMatch: ['**/TesteFinal/Ajax/validacaoAjaxEstoque.spec.ts'] },
@@ -22,6 +25,6 @@ export default defineConfig({
     { name: '04-Cad-Planos',    testMatch: ['**/Cad_Planos.spec.ts'], dependencies: ['03-Cad-Cliente'] },
 
     // teste da base: deb12
-    { name: '05-Cad-Cliente-deb12',  testMatch: ['**/deb12/ClienteCadastro.spec.ts'], dependencies: ['04-Cad-Planos'], use: { headless: false, launchOptions: { slowMo: 200 } } },
+    { name: '05-Cad-Cliente-deb12',  testMatch: ['**/Deb12/ClienteCadastro.spec.ts'], use: { headless: false, launchOptions: { slowMo: 200 } } },
   ],
 });
