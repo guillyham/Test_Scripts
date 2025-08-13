@@ -95,7 +95,7 @@ async function validacaoAjaxEstoque(menu, page) {
   }
 
   //Campo designar atendimento
-  const designarAtdVal = await randomSelect(page,'#id_sc_field_retequip_designar',['N']); //Caso queira
+  const designarAtdVal = await randomSelect(page,'#id_sc_field_retequip_designar',['N']);
   await waitForAjax(page);
   const designarAtdNew = await page.locator('#id_sc_field_retequip_designar').inputValue();
   if (!designarAtdNew || designarAtdNew === 'N') throw new Error(`DesignarAtd inválido: "${designarAtdNew}"`);
@@ -112,7 +112,6 @@ async function validacaoAjaxEstoque(menu, page) {
   //Validação final (antes de salvar)
   for (const { locator } of altered) await validateFields(locator);
   await page.locator('#sc_b_upd_t').click();
-
 }
 
 test('Testar Ajax Estoque', async ({ page }) => {
