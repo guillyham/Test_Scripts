@@ -1,13 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
 
-const ROOT = path.resolve(__dirname, '..'); // comentário: sobe para a raiz do projeto
+const ROOT = path.resolve(__dirname, '..'); 
 
 export default defineConfig({
-  testDir: '.', // comentário: os testes estão na própria pasta "tests"
-  outputDir: path.join(ROOT, 'test-results'), // comentário: salva na raiz/test-results
+  testDir: '.',
+  outputDir: path.join(ROOT, 'test-results'), 
   reporter: [
-    ['html', { outputFolder: path.join(ROOT, 'reports/html'), open: 'never' }], // comentário: raiz/reports/html
+    ['html', { outputFolder: path.join(ROOT, 'reports/html'), open: 'never' }], 
   ],
   use: {
     browserName: 'chromium',
