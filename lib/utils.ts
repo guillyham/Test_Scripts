@@ -165,7 +165,7 @@ export async function waitForAjax(
         console.warn(`Spinner '${selector}' não se comportou como esperado: ${e}`);
         return false;
       }
-    }, { timeout: initialTimeout + hiddenTimeout + 1000, interval: 250 }); // Aumenta o timeout para cobrir ambos os waits
+    }, { timeout: initialTimeout + hiddenTimeout + 1000, interval: 250 }); 
   }
 
   // Garante um atraso mínimo, mesmo que não haja spinners visíveis
@@ -199,7 +199,6 @@ export async function retryUntil(
   throw new Error('retryUntil: condition not met within timeout');
 }
 
-// comentário: salva somente se valor mudou e não está vazio
 export async function saveIfChanged(
   container: Locator,
   originalValue: string,

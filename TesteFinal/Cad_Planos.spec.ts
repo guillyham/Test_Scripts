@@ -1,4 +1,4 @@
-import { test, expect, Locator, Page, Frame} from '@playwright/test';
+import { test, expect, Locator, Page, Frame, selectors} from '@playwright/test';
 import { randomSelect, randomSelect2, login, validateFields, waitForAjax, retryUntil, } from '../lib/utils';
 /*
 FLuxo do teste:
@@ -50,6 +50,7 @@ async function incluirRegistro(page, menu) {
       await validateFields(qosInput);
       
       await menu.locator('#sc_b_ins_t').click( );//finaliza o cadastro
+      await waitForAjax(page, 4000);
     }
   else 
     { 
@@ -132,10 +133,49 @@ async function incluirRegistro(page, menu) {
       await validateFields(meioTransmissaoSelectorInput);
 
       await menu.locator('#sc_b_ins_t').click( );//finaliza o cadastro
+      await waitForAjax(page, 4000);
     }
 }
 
-// Fluxo principal do teste
+async function configuracaoFiscal(page, menu) {
+  const codigoPlano = await menu.locator('#id_sc_field_codigo').inputValue(); 
+
+  await retryUntil(async () => {
+    const picked = await randomSelect2(menu, '[aria-labelledby="select2-id_sc_field_nfnatoper-container"]', ['selecione','(selecione)','padrão']);
+    await waitForAjax(page);
+    const ctr = menu.locator('#select2-id_sc_field_nfnatoper-container');
+    const txt = (await ctr.textContent())?.trim() ?? '';
+    if (!txt || txt !== picked) return false;
+    await validateFields(ctr); 
+    return true;
+  }, { timeout: 20000, interval: 500 });
+
+  await retryUntil(async () => {
+    const picked = await randomSelect2(menu, '[aria-labelledby="select2-id_sc_field_adesaonatoper-container"]', ['selecione','(selecione)','padrão']);
+    await waitForAjax(page);
+    const ctr = menu.locator('#select2-id_sc_field_adesaonatoper-container');
+    const txt = (await ctr.textContent())?.trim() ?? '';
+    if (!txt || txt !== picked) return false;
+    await validateFields(ctr);
+    return true;
+  }, { timeout: 20000, interval: 500 });
+
+  console.log('Código do plano:', codigoPlano);
+  await menu.locator('#sc_b_upd_t').click();
+  await waitForAjax(page);
+  await menu.getByText('Voltar').click();
+  await waitForAjax(page);
+  await menu.getByAltText('Cadastro de Planos').isVisible();
+  await menu.locator('#SC_fast_search_top').fill(codigoPlano);
+  await page.keyboard.press('Enter');
+  await waitForAjax(page, 2000);
+
+  const alertImg = menu.locator('#id_sc_field_alerta_10 img');
+  if ((await alertImg.count()) === 0 || !(await alertImg.first().isVisible())) {
+    return; 
+  }
+}
+
 test('Cadastro de planos', async ({ page }) => {
   // Gera o cache dos itens do inspetor.
   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
@@ -147,5 +187,5 @@ test('Cadastro de planos', async ({ page }) => {
   await login(page);
   await novoPlano(page,menu);
   await incluirRegistro(page,menu);
-  
+  await configuracaoFiscal(page,menu);
 });
