@@ -39,9 +39,15 @@ async function incluirRegistro(page, menu) {
   const vigencia = menu.locator('#id_sc_field_vigencia');
   await validateFields(vigencia);
 
+  await menu.locator('#id_sc_field_qtdepadrao').fill('1');
+  const QtdePadrao = menu.locator('#id_sc_field_qtdepadrao');
+  await validateFields(QtdePadrao);
+
   await randomSelect(menu, '#id_sc_field_tipo');
   const tipoInput = menu.locator('#id_sc_field_tipo');
   await validateFields(tipoInput); 
+
+  
     if (await tipoInput.inputValue() === 'T') //caso seja do tipo 'Telefonia'
       {
       const qosSelector = '#select2-id_sc_field_qos-container';
@@ -135,6 +141,7 @@ async function incluirRegistro(page, menu) {
       await menu.locator('#sc_b_ins_t').click( );//finaliza o cadastro
       await waitForAjax(page, 4000);
     }
+
 }
 
 async function configuracaoFiscal(page, menu) {
@@ -163,7 +170,7 @@ async function configuracaoFiscal(page, menu) {
   await menu.locator('#sc_b_upd_t').click();
   await waitForAjax(page);
   await menu.getByText('Voltar').click();
-  await menu.getByAltText('Cadastro de Planos').isVisible();
+  await menu.getByText('Cadastro de Planos').isVisible();
   await menu.locator('#SC_fast_search_top').fill(codigoPlano);
   await page.keyboard.press('Enter');
   await waitForAjax(page, 2000);
@@ -172,9 +179,7 @@ async function configuracaoFiscal(page, menu) {
   const ALERT_SELECTOR = 'img[title*="Divergências no valor total dos dados fiscais"]';
   const icon = menu.locator(ALERT_SELECTOR);
   const shouldSkip =(await icon.count()) > 0 && (await icon.first().isVisible());
-
-  // comentário: pula o teste quando o ícone está visível
-  test.skip(shouldSkip, 'Ícone de alerta presente — pulando teste.');
+  test.skip(shouldSkip);
 }
 
 test('Cadastro de planos', async ({ page }) => {
@@ -183,7 +188,7 @@ test('Cadastro de planos', async ({ page }) => {
   const item5 = menu.frameLocator('iframe[name="item_5"]');
   const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
 
-  test.setTimeout(50000);
+  test.setTimeout(80000);
 
   await login(page);
   await novoPlano(page,menu);

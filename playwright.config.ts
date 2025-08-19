@@ -19,12 +19,13 @@ export default defineConfig({
 
   projects: [
     //teste da base: teste final
-    { name: '01-Ajax-Estoque',  testMatch: ['**/TesteFinal/Ajax/validacaoAjaxEstoque.spec.ts'] },
-    { name: '02-Ajax-Pedidos',  testMatch: ['**/TesteFinal/Ajax/validacaoAjaxPedidos.spec.ts'], dependencies: ['01-Ajax-Estoque']   },
-    { name: '03-Cad-Cliente',   testMatch: ['**/Cad_cliente.spec.ts'], dependencies: ['02-Ajax-Pedidos'], use: { headless: false, launchOptions: { slowMo: 200 } } },
-    { name: '04-Cad-Planos',    testMatch: ['**/Cad_Planos.spec.ts'], dependencies: ['03-Cad-Cliente'] },
+    { name: '01-Ajax-Estoque',  testMatch: ['**/TesteFinal/Ajax/validacaoAjaxEstoque.spec.ts']},
+    { name: '02-Ajax-Pedidos',  testMatch: ['**/TesteFinal/Ajax/validacaoAjaxPedidos.spec.ts'], dependencies: ['01-Ajax-Estoque']},
+    { name: '03-Ajax-Planos',  testMatch: ['**/TesteFinal/Ajax/validacaoAjaxPlanos.spec.ts'], dependencies: ['02-Ajax-Pedidos']},
+    { name: '04-Cad-Cliente',   testMatch: ['**/Cad_cliente.spec.ts'], dependencies: ['03-Ajax-Planos'], use: { headless: false, launchOptions: { slowMo: 200 } } },
+    { name: '05-Cad-Planos',    testMatch: ['**/Cad_Planos.spec.ts'], dependencies: ['04-Cad-Cliente'] },
 
     // teste da base: deb12
-    { name: '05-Cad-Cliente-deb12',  testMatch: ['**/Deb12/ClienteCadastro.spec.ts'], use: { headless: false, launchOptions: { slowMo: 200 } } },
+    { name: '06-Cad-Cliente-deb12',  testMatch: ['**/Deb12/ClienteCadastro.spec.ts'], use: { headless: false, launchOptions: { slowMo: 200 } } },
   ],
 });
