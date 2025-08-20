@@ -31,7 +31,8 @@ async function validacaoAjaxPlanos(page, menu) {
   await waitForAjax(page);
   await expect(menu.getByText('Cadastro de Planos')).toBeVisible();
 
-  const editBtn = menu.locator('tr:has(td:has-text("TESTE TIP")) a#bedit').first();
+  //const editBtn = menu.locator('tr:has(td:has-text("TESTE TIP")) a#bedit').first();
+  const editBtn = page.locator('#id_sc_field_codigo_1').first();
   await expect(editBtn).toBeVisible();
   await editBtn.click();
   await waitForAjax(page);
@@ -57,19 +58,32 @@ async function validacaoAjaxPlanos(page, menu) {
     altered.push({ name: 'cobrPTerceiro', locator: cobrancaPTerceiro });
     await waitForAjax(page, 500);
 
-    const cobrPtercSecond = await menu.locator('#id_sc_field_cobrptp').inputValue(); 
-      if(cobrPtercSecond === 'T') {
-        const picked = await randomSelect(menu, '#id_sc_field_cobrpt', ['T']);        
-        console.log(picked)
+    const cobrPtercSecond = await randomSelect(menu, '#id_sc_field_cobrptp');
+    const cobrPtercSecondSelector = await menu.locator('#id_sc_field_cobrptp').inputValue();  
+    await waitForAjax(page);
+      if(cobrPtercSecondSelector === 'S') {
+        await waitForAjax(page);
+        const icon = menu.locator('.icon_fa.fas.fa-forward').first();
+        await expect(icon).toBeVisible();
+        await icon.click();
+        await waitForAjax(page);
+
+        const cobrPTerceirosContratos = randomSelect(menu, '#id_sc_field_ptcon', ['(Selecione um Terceiro para inicializar os contratos deste plano)']);
+        const cobrPTerceirosPacotes = randomSelect(menu, '#id_sc_field_ptpac', ['(Selecione um Terceiro para inicializar os pacotes que contém este plano)']);
+        await waitForAjax(page);
+
+        await menu.locator('#sc_b_upd_t').click();
       }
-      else if(cobrPtercSecond === 'S') {
-        console.log('aqui 2 =', cobrPtercSecond);
-      }
+        else{
+        const cobrPTerceirosContratos = randomSelect(menu, '#id_sc_field_ptcon', ['(Selecione um Terceiro para inicializar os contratos deste plano)']);
+        const cobrPTerceirosPacotes = randomSelect(menu, '#id_sc_field_ptpac', ['(Selecione um Terceiro para inicializar os pacotes que contém este plano)']);
+        await waitForAjax(page);
 
-
-
+        await menu.locator('#sc_b_upd_t').click();
+        }
   }
-  else {
+  else
+  {
     const sel = menu.locator('#id_sc_field_cobrpt');
     await sel.selectOption({ index: 0 });
     await waitForAjax(page);
@@ -79,7 +93,6 @@ async function validacaoAjaxPlanos(page, menu) {
   }
   await waitForAjax(page);
 
-  
   //cobrança por Terceiro 
   const dPickedVal = await randomSelect(menu, '#id_sc_field_cobrdt');
   await waitForAjax(page);
@@ -89,8 +102,40 @@ async function validacaoAjaxPlanos(page, menu) {
   const dNewVal = await cobrancaDTerceiro.inputValue();
   if (dNewVal && dNewVal !== cobrancaDTerceiroOri) {
     altered.push({ name: 'cobrDTerceiro', locator: cobrancaDTerceiro });
-  }
 
+    const cobrDtercSecond = await randomSelect(menu, '#id_sc_field_cobrdtp');
+    const cobrDtercSecondSelector = await menu.locator('#id_sc_field_cobrdtp').inputValue();  
+    await waitForAjax(page);
+    if(cobrDtercSecondSelector === 'S')
+    {
+        await waitForAjax(page);
+        await page.locator('iframe[name="app_menu_iframe"]').contentFrame().getByRole('cell', { name: '   ', exact: true }).locator('#Bbpassfld_rightall').click();
+        await waitForAjax(page);
+
+        const cobrPTerceirosContratos = randomSelect(menu, '#id_sc_field_dtcon', ['(Selecione um Terceiro para inicializar os contratos deste plano)']);
+        const cobrPTerceirosPacotes = randomSelect(menu, '#id_sc_field_dtpac', ['(Selecione um Terceiro para inicializar os pacotes que contém este plano)']);
+        await waitForAjax(page);
+        await menu.locator('#sc_b_upd_t').click();
+    }
+    else
+    {
+        await waitForAjax(page);
+        const cobrPTerceirosContratos = randomSelect(menu, '#id_sc_field_dtcon', ['(Selecione um Terceiro para inicializar os contratos deste plano)']);
+        const cobrPTerceirosPacotes = randomSelect(menu, '#id_sc_field_dtpac', ['(Selecione um Terceiro para inicializar os pacotes que contém este plano)']);
+        await waitForAjax(page);
+        await menu.locator('#sc_b_upd_t').click();
+    }
+  }
+  else
+  {
+    const sel = menu.locator('#id_sc_field_cobrdt');
+    await sel.selectOption({ index: 0 });
+    await waitForAjax(page);
+    const firstLabel = (await sel.locator('option').nth(0).textContent())?.trim() ?? '';
+    await expect(sel.locator('option:checked')).toHaveText(firstLabel);
+    await menu.locator('#sc_b_upd_t').click();
+
+  }
   for (const { locator } of altered) {
     await validateFields(locator);
   }
