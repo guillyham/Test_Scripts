@@ -328,7 +328,7 @@ async function camposOpcionais(page, newPage, menu) {
 }
 
 // Finaliza o cadastro
-async function incluirRegistro(menu, page) {
+async function incluirRegistro(menu) {
   await menu.getByTitle('Incluir registro(s)').click();
   await menu.locator('iframe[name="item_1"]').waitFor({ state: 'attached', timeout: 45000 });
   const item1Frame = await (await menu.locator('iframe[name="item_1"]').elementHandle()).contentFrame();
@@ -344,7 +344,7 @@ async function incluirRegistro(menu, page) {
 }
 
 // Plano fixo Inicio
-async function contratoStart(page, menu, item5, tb) {
+async function contratoStart(menu, item5, tb) {
   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
   await expect(contrato).toBeVisible();
   await contrato.click();
@@ -377,7 +377,7 @@ async function contratoStart(page, menu, item5, tb) {
 }
 
 // Plano dinamico Inicio
-async function contratoDinamicoStart(page, menu, item5, tb) {
+async function contratoDinamicoStart(menu, item5, tb) {
   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
   await expect(contrato).toBeVisible();
   await contrato.click();
@@ -583,12 +583,12 @@ test('Cadastro completo de cliente com contrato fixo', async ({ page, context })
   await acessarCadastro(page);
   await preencherCampos(page, newPage, menu);
   await camposOpcionais(page, newPage, menu);
-  const clientCode = await incluirRegistro(menu,page);
+  const clientCode = await incluirRegistro(menu);
 
   //Inicia contrato fixo
-  //await contratoStart(page, menu, item5, tb); 
+  //await contratoStart(page, menu, item5); 
   //Inicia contrato Dinamico
-  await contratoDinamicoStart(page, menu, item5, tb);
+  await contratoDinamicoStart(page, menu, item5);
 
   await camposOpcionaisContratos(page, newPage, menu, item5, tb);
 

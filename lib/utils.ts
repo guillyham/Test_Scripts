@@ -17,29 +17,22 @@ export async function randomSelect(
   blacklist: string[] = ['0']
 ): Promise<string> {
   const select = menu.locator(selectSelector);
-  
+
   await retryUntil(async () => {
-    await select.waitFor({ state: 'visible', timeout: 10000 });
+    await select.waitFor({ state: 'visible', timeout: 10_000 });
+    if (await select.isDisabled()) return false;
     return true;
-  }, { timeout: 20000, interval: 500 });
+  }, { timeout: 20_000, interval: 500 });
 
   const options = select.locator('option');
   const count = await options.count();
-
   const validOptions: string[] = [];
 
   for (let i = 0; i < count; i++) {
     const option = options.nth(i);
     const value = await option.getAttribute('value');
-    const isDisabled = await option.isDisabled();
-
-    if (
-      value &&
-      !blacklist.includes(value) &&
-      !isDisabled
-    ) {
-      validOptions.push(value);
-    }
+    const disabled = await option.isDisabled();
+    if (value && !blacklist.includes(value) && !disabled) validOptions.push(value);
   }
 
   if (validOptions.length === 0) {
@@ -47,12 +40,12 @@ export async function randomSelect(
   }
 
   const randomValue = validOptions[Math.floor(Math.random() * validOptions.length)];
-  
+
   await retryUntil(async () => {
     await select.selectOption({ value: randomValue });
     const selectedValue = await select.inputValue();
     return selectedValue === randomValue;
-  }, { timeout: 20000, interval: 500 });
+  }, { timeout: 20_000, interval: 500 });
 
   return randomValue;
 }
@@ -63,60 +56,54 @@ export async function randomSelect2(
   blacklist: string[] = []
 ): Promise<string> {
   const trigger = menu.locator(dropdownTriggerSelector);
-  
+
   await retryUntil(async () => {
-    await trigger.waitFor({ state: 'visible', timeout: 10000 });
+    await trigger.waitFor({ state: 'visible', timeout: 10_000 });
     await trigger.click();
     return true;
-  }, { timeout: 20000, interval: 500 });
+  }, { timeout: 20_000, interval: 500 });
 
-  // Wait for dropdown options container
   const optionsContainer = menu.locator('.select2-results__options');
-  
   await retryUntil(async () => {
-    await optionsContainer.waitFor({ state: 'visible', timeout: 10000 });
+    await optionsContainer.waitFor({ state: 'visible', timeout: 10_000 });
     return true;
-  }, { timeout: 20000, interval: 500 });
+  }, { timeout: 20_000, interval: 500 });
 
   const options = optionsContainer.locator('.select2-results__option');
   const count = await options.count();
-
-  const validOptions: { index: number; text: string }[] = [];
+  const valid: { index: number; text: string }[] = [];
 
   for (let i = 0; i < count; i++) {
-    const option = options.nth(i);
-    const text = (await option.textContent())?.trim() ?? '';
-
-    if (
-      text.length > 0 &&
-      !blacklist.some((bad) => text.toLowerCase().includes(bad.toLowerCase())) &&
-      !(await option.getAttribute('aria-disabled')) // avoid disabled
-    ) {
-      validOptions.push({ index: i, text });
+    const opt = options.nth(i);
+    const text = (await opt.textContent())?.trim() ?? '';
+    const disabled = await opt.getAttribute('aria-disabled');
+    if (text && !disabled && !blacklist.some(b => text.toLowerCase().includes(b.toLowerCase()))) {
+      valid.push({ index: i, text });
     }
   }
 
-  if (validOptions.length === 0) {
+  if (!valid.length) {
     throw new Error(`Nenhuma opção válida encontrada para "${dropdownTriggerSelector}".`);
   }
 
-  const random = validOptions[Math.floor(Math.random() * validOptions.length)];
-  
-  await retryUntil(async () => {
-    await options.nth(random.index).click();
-    const selectedText = await trigger.textContent();
-    const trimmed = selectedText?.trim() ?? '';
-    return trimmed === random.text;
-  }, { timeout: 20000, interval: 500 });
+  const choice = valid[Math.floor(Math.random() * valid.length)];
 
-  return random.text;
+  await retryUntil(async () => {
+    await options.nth(choice.index).click();
+
+    const selected = options.nth(choice.index).getAttribute('aria-selected');
+    const triggerText = (await trigger.textContent())?.trim() ?? '';
+    return (await selected) === 'true' || triggerText === choice.text;
+  }, { timeout: 20_000, interval: 500 });
+
+  return choice.text;
 }
 
 export type ValidationOptions = {
   timeout?: number;
   allowEmpty?: boolean;
   customPattern?: RegExp;
-  rejectPlaceholders?: string[]; // NEW
+  rejectPlaceholders?: string[];
 }
 
 export async function validateFields(
@@ -124,18 +111,23 @@ export async function validateFields(
   options: ValidationOptions = {}
 ): Promise<void> {
   const {
-    timeout = 10000,
+    timeout = 10_000,
     allowEmpty = false,
     customPattern = /.+/,
-    // now includes 'padrão' and an explicit empty string check
     rejectPlaceholders = ['selecione', '(selecione)', 'padrão'],
   } = options;
 
   const isRejected = (raw: string | null | undefined) => {
-    const v = (raw ?? '').trim().toLowerCase();
-    if (!allowEmpty && v === '') return true; // empty is invalid when allowEmpty=false
-    return rejectPlaceholders.some(p => v === p.toLowerCase());
+    const v = (raw ?? '').trim();
+    if (!allowEmpty && v === '') return true;
+    return rejectPlaceholders.some(p => v.toLowerCase() === p.toLowerCase());
   };
+
+  await retryUntil(async () => {
+    const value = await locator.innerText().catch(() => '');
+    if (isRejected(value)) return false;
+    return customPattern.test(value);
+  }, { timeout, interval: 250 });
 }
 
 export async function waitForAjax(
@@ -153,22 +145,16 @@ export async function waitForAjax(
     const spinner = page.locator(selector);
     await retryUntil(async () => {
       try {
-        // Espera o spinner aparecer, com um timeout curto. Se não aparecer, continua.
         await spinner.waitFor({ state: 'visible', timeout: initialTimeout }).catch(() => {});
-        // Se o spinner apareceu, espera ele desaparecer com um timeout maior.
         await spinner.waitFor({ state: 'hidden', timeout: hiddenTimeout });
         return true;
       } catch (e) {
-        // Se o spinner não desaparecer dentro do hiddenTimeout, lança um erro.
-        // Ou, se a intenção é apenas ignorar spinners que não aparecem, o catch() acima já faz isso.
-        // Para spinners que aparecem mas não somem, o erro será lançado pelo segundo waitFor.
         console.warn(`Spinner '${selector}' não se comportou como esperado: ${e}`);
         return false;
       }
     }, { timeout: initialTimeout + hiddenTimeout + 1000, interval: 250 }); 
   }
 
-  // Garante um atraso mínimo, mesmo que não haja spinners visíveis
   const elapsed = Date.now() - start;
   const remaining = minDelay - elapsed;
 
@@ -211,3 +197,5 @@ export async function saveIfChanged(
   }
   return false;
 }
+
+

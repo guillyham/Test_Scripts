@@ -1,5 +1,5 @@
 import { test, expect, Page, Locator } from '@playwright/test';
-import { randomSelect, randomSelect2, login, waitForAjax, validateFields, retryUntil } from '../../lib/utils';
+import { randomSelect, login, waitForAjax, validateFields } from '../../lib/utils';
 
 /*
 FLuxo do teste:
