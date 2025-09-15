@@ -113,7 +113,7 @@ async function preencherCampos(page, newPage, menu) {
 async function camposOpcionais(page, newPage, menu) {
   //Endereço de cobrança
   await menu.locator('#SC_blk_pdf6').click();
-  await menu.locator('#SC_blk_pdf13').click();
+  await menu.locator('#SC_blk_pdf14').click();
 
   //Grupo
   {
