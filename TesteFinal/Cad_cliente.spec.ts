@@ -1,5 +1,5 @@
 import { test, expect, Locator, Page, Frame} from '@playwright/test';
-import { randomSelect, randomSelect2, login, validateFields } from '../lib/utils';
+import { randomSelect, randomSelect2, login, validateFields} from '../lib/utils';
 
 /*
 Fluxo do teste:

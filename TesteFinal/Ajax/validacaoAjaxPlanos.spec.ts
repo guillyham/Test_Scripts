@@ -1,5 +1,5 @@
 import { test, expect, Page, Locator } from '@playwright/test';
-import { randomSelect, login, waitForAjax, validateFields } from '../../lib/utils';
+import { randomSelect, randomSelect2, login, waitForAjax, validateFields, retryUntil } from '../../lib/utils';
 
 /*
 FLuxo do teste:
@@ -31,8 +31,7 @@ async function validacaoAjaxPlanos(page, menu) {
   await waitForAjax(page);
   await expect(menu.getByText('Cadastro de Planos')).toBeVisible();
 
-  //const editBtn = menu.locator('tr:has(td:has-text("TESTE TIP")) a#bedit').first();
-  const editBtn = page.locator('#id_sc_field_codigo_1').first();
+  const editBtn = menu.locator('tr:has(td:has-text("TESTE TIP")) a#bedit').first();
   await expect(editBtn).toBeVisible();
   await editBtn.click();
   await waitForAjax(page);
