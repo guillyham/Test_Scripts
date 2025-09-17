@@ -296,7 +296,6 @@ async function camposOpcionais(page, newPage, menu) {
     }
   }  
 
-
   //Grupo Cobr
   {
     const grupoCobrLabel = menu.locator('#id_label_cobr_grupo');

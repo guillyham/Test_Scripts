@@ -160,36 +160,40 @@ export async function login(page) {
 
 export async function waitForAjax(
   page: Page,
-  minDelay: number = 1000, // valor pode ser ajustado conforme necessário na chamada da função
+  minDelay: number = 1000,
   spinnerSelectors: string[] = ['.ajax-loader', '.blockUI', '.loading']
 ): Promise<void> {
   const start = Date.now();
-  const timeout = 1000;
-  const endTime = start + timeout;
-  //rmover comentario para debug
-  //console.log('WAITING FOR AJAX');
+  const initialTimeout = 1000; // timeout for spinner to become visible
+  const hiddenTimeout = 5000;  // timeout for spinner to disappear
+
+  // console.log('WAITING FOR AJAX'); // enable for debug if needed
 
   for (const selector of spinnerSelectors) {
     const spinner = page.locator(selector);
-    try {
-      await spinner.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
-      await spinner.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
-    } catch (e) {
-      // nao deveria dar erro, mas se der, ignora
-    }
+    await retryUntil(async () => {
+      try {
+        // Wait briefly for spinner to appear, ignore if it doesn’t
+        await spinner.waitFor({ state: 'visible', timeout: initialTimeout }).catch(() => {});
+        // If spinner appeared, then wait for it to disappear
+        await spinner.waitFor({ state: 'hidden', timeout: hiddenTimeout });
+        return true;
+      } catch (e) {
+        // If spinner didn’t behave, log + retry
+        console.warn(`Spinner '${selector}' did not behave as expected: ${e}`);
+        return false;
+      }
+    }, { timeout: initialTimeout + hiddenTimeout + 1000, interval: 250 });
   }
 
-  //Esse entra em ação caso o ajax nao tenha spinner visível
+  // Guarantee a minimum delay even if no spinners were visible
   const elapsed = Date.now() - start;
   const remaining = minDelay - elapsed;
-
   if (remaining > 0) {
-    //rmover comentario para debug
-    //console.log(`WAITING`);
     await page.waitForTimeout(remaining);
   }
-  //rmover comentario para debug
-  //console.log('PASS');
+
+  // console.log('PASS'); // enable for debug if needed
 }
 
 export async function retryUntil(
@@ -210,4 +214,32 @@ export async function retryUntil(
   }
 
   throw new Error('retryUntil: condition not met within timeout');
+}
+
+function framePath(frame: Frame): string {
+  const names: string[] = [];
+  let f: Frame | null = frame;
+  while (f) {
+    names.push(f.name() || '(no-name)');
+    f = f.parentFrame();
+  }
+  return names.reverse().join(' → ');
+}
+
+export async function debugSelectorCounts(page: Page, selector: string) {
+  // Top-level page
+  const pageCount = await page.locator(selector).count().catch(() => 0);
+  console.log(`page '${selector}' = ${pageCount}`);
+
+  // All frames (includes nested)
+  const frames = page.frames();
+  for (const f of frames) {
+    // skip main frame; we already printed "page"
+    if (f === page.mainFrame()) continue;
+
+    let count = 0;
+    try { count = await f.locator(selector).count(); } catch {}
+    const label = framePath(f); // e.g., "(no-name) → app_menu_iframe → init_tab"
+    console.log(`frame[${label}] '${selector}' = ${count}`);
+  }
 }

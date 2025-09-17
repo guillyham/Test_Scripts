@@ -1,9 +1,9 @@
-import { test, expect, Locator, Page, Frame} from '@playwright/test';
-import { randomSelect, randomSelect2, login, validateFields, waitForAjax } from '../lib/utils';
+import { test, expect, FrameLocator, Page, Frame } from '@playwright/test';
+import { randomSelect, randomSelect2, login, waitForAjax, debugSelectorCounts } from '../lib/utils';
 
 
 async function selectContratoNative(menu: Page | Frame, blacklist: string[] = []): Promise<string> {
-  const native = menu.locator('#id_sc_field_cliente_contrato'); 
+  const native = menu.locator('#id_sc_field_cliente_contrato');
   await native.waitFor({ state: 'attached', timeout: 10_000 });
 
   const options = native.locator('option');
@@ -64,47 +64,198 @@ async function selectContatosNative(menu: Page | Frame, blacklist: string[] = []
   return choice.label;
 }
 
-async function acessarCadastro(page) {
+function getAtendimentoFrame(page: Page) {
+  const appMenu = page.frameLocator('iframe[name="app_menu_iframe"]');
+  return appMenu.frameLocator('iframe[name^="atend_Novo"]');
+}
+
+type ResolveOpts = {
+  waitForAtend?: boolean;   // wait for the dynamic iframe to show up
+  timeoutMs?: number;       // how long to wait for it
+};
+
+async function resolveAtendimentoScope(
+  page: Page,
+  appMenuFrame: FrameLocator,
+  opts: ResolveOpts = {}
+): Promise<FrameLocator> {
+  const { waitForAtend = false, timeoutMs = 8000 } = opts;
+
+  const findAtend = () => page.frames().find(f => (f.name() || '').startsWith('atend_Novo'));
+
+  // Fast check first
+  if (findAtend()) {
+    return appMenuFrame.frameLocator('iframe[name^="atend_Novo"]');
+  }
+
+  // Optionally wait a bit (use this right after Execução opens the form)
+  if (waitForAtend) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      if (findAtend()) {
+        return appMenuFrame.frameLocator('iframe[name^="atend_Novo"]');
+      }
+      await page.waitForTimeout(150);
+    }
+  }
+
+  // Fallback to the base frame
+  return appMenuFrame;
+}
+
+async function runNovoAtendimentoFlow(
+  page: Page,
+  appMenuFrame: FrameLocator,
+  opts: ResolveOpts = {}
+) {
+  const scope = await resolveAtendimentoScope(page, appMenuFrame, opts);
+
+  await novoAtendimentoForm(page, scope);
+  await camposOpcionaisNovoAtendimento(page, scope);
+  await novoAtendimentoFinalizar(page, scope);
+}
+
+async function informativo(page) {
   await page.getByText('x', { exact: true }).click();
   await page.locator('img').first().click();
+}
+
+async function novoAtendimentoClientesCad(page, menu) {
   await page.getByRole('link', { name: 'Empresa' }).click();
   await page.getByRole('link', { name: 'Clientes' }).click();
   await page.locator('#item_13').click();
+
+  await waitForAjax(page);
+  const atdNovoBtn = menu.locator('#id_sc_field_btnatendnovo_1').first();
+  await expect(atdNovoBtn).toBeVisible();
+  await atdNovoBtn.click();
 }
 
-async function novoAtendimentoClientesCad(page, menu){
-    await waitForAjax(page);
-    const atdNovoBtn =  menu.locator('#id_sc_field_btnatendnovo_1').first();
-    await expect(atdNovoBtn).toBeVisible();
-    await atdNovoBtn.click();
+async function novoAtendimentoExecucao(page, menu) {
+  await page.locator('img').first().click();
+  await page.getByRole('link', { name: 'Atendimento' }).click();
+  await page.locator('#item_59').click();
+  await waitForAjax(page, 1000);
+
+  const appMenuFrame = page.frameLocator('iframe[name="app_menu_iframe"]');
+  const initTabFrame = appMenuFrame.frameLocator('iframe[name="init_tab"]');
+
+  const atdNovoBtn = initTabFrame.getByTitle('Incluir um novo atendimento');
+  await expect(atdNovoBtn).toBeVisible();
+  await atdNovoBtn.click();
+  await waitForAjax(page);
+
+  const atend = getAtendimentoFrame(page);
+  await atend.locator('#id_sc_field_tipocli').selectOption({ value: 'C' })
+  await waitForAjax(page);
+
+  await expect(atend.locator('#id_label_cliente_codigo')).toBeVisible();
+  const clienteCodigo = atend.locator('#id_sc_field_cliente_codigo');
+  await clienteCodigo.click();
+  await page.keyboard.type("1");
+  await page.keyboard.press('Tab');
+  await waitForAjax(page);
+
+
+
 }
 
-async function novoAtendimentoForm(page, menu){
+async function novoAtendimentoForm(page, menu) {
   await waitForAjax(page);
 
   await expect(menu.getByText('Novo Atendimento')).toBeVisible();
-  const contratoSelector = await selectContratoNative(menu, ['-c','-t', '-s']);   
+  await selectContratoNative(menu, ['-c', '-t', '-s']);
   await waitForAjax(page);
 
-  const contatoSelector = await selectContatosNative(menu);
-  await waitForAjax(page);
+  await randomSelect(menu, '#id_sc_field_situacao');
 
-  const situcaoSelector = await randomSelect(menu, '#id_sc_field_situacao');
+  const informarSelector = await randomSelect(menu, '#id_sc_field_topflux', ['selecione', '(selecione)']);
+  await waitForAjax(page, 500);
+
+  if (informarSelector === 'F') {
+    //await expect(menu.getByText('fluxo')).toBeVisible();
+    await randomSelect2(menu, '#select2-id_sc_field_fluxo-container', ['selecione', '(selecione)']);
+    await waitForAjax(page);
+  }
+  else {
+    //await expect(menu.getByText('Tipo')).toBeVisible();
+    await randomSelect(menu, '#id_sc_field_tipo', ['selecione', '(selecione)']);
+    await waitForAjax(page);
+
+    await randomSelect2(menu, '[role="combobox"][aria-labelledby="select2-id_sc_field_topico-container"]');
+    await waitForAjax(page);
+  }
+
+  const atdAssunto = await menu.locator('#id_sc_field_assunto');
+  await atdAssunto.click();
+  await page.keyboard.type("Atendimento aberto pelo teste automatizado.");
 }
 
-test('Abertura de atendimentos', async ({ page, context }) => {
+async function camposOpcionaisNovoAtendimento(page, menu) {
+  {//Campo contato
+    const contatoLabel = menu.locator("#id_label_cliente_contato");
+    await expect(contatoLabel).toBeVisible();
+    const contato = (await contatoLabel.textContent())?.trim() ?? '';
+    if (contato && contato.includes("*")) {
+      await selectContatosNative(menu);
+      await waitForAjax(page);
+    } else {
+      console.log('Erro selecionado um contato')
+    }
+  }
+
+  {//campo estimulo de markeing
+    const l1 = menu.locator('#id_label_estmark');
+    const l2 = menu.locator('#id_label_estmarkfluxo');
+
+    const target = (await l1.isVisible()) ? l1 : l2;
+    const required = ((await target.textContent()) ?? '').includes('*');
+    const visible = await target.isVisible();
+
+    if (required && visible) {
+      await randomSelect2(menu, '[role="combobox"][aria-labelledby="select2-id_sc_field_estmarkfluxo-container"]')
+    }
+  }
+}
+
+async function novoAtendimentoFinalizar(page, menu) {
+  await menu.locator('#sub_form_b').click();
+  await waitForAjax(page);
+
+  const appMenuFrame = page.frameLocator('iframe[name="app_menu_iframe"]');
+  await expect(appMenuFrame.getByText('Assunto/Solução')).toBeVisible();
+
+  const assunto = menu.locator('#id_sc_field_assunto');
+  await expect(assunto).toBeVisible();
+  await expect(assunto).toHaveValue('Atendimento aberto pelo teste automatizado.');
+  await expect(menu.locator('#id_sc_field_ndesignar')).toHaveValue('N');
+}
+
+test('Abertura de atendimentos', async ({ page }) => {
   // Gera o cache dos itens do inspetor.
-    const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
-    const item5 = menu.frameLocator('iframe[name="item_5"]');
-    const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
+  const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
+  const item5 = menu.frameLocator('iframe[name="item_5"]');
+  const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
 
-    test.setTimeout(20000);
+  test.setTimeout(80000);
 
-    await login(page);
+  await login(page);
 
-    await acessarCadastro(page);
+  await informativo(page);
 
-    await novoAtendimentoClientesCad(page, menu);
+  const appMenu = page.frameLocator('iframe[name="app_menu_iframe"]');
 
+  await novoAtendimentoClientesCad(page, menu);
     await novoAtendimentoForm(page, menu);
+    await camposOpcionaisNovoAtendimento(page, menu);
+    await novoAtendimentoFinalizar(page, menu);
+  
+    await novoAtendimentoExecucao(page, appMenu);
+    await runNovoAtendimentoFlow(page, appMenu, { waitForAtend: true });
+
+  /*await novoAtendimentoExecucao(page, menu);{
+    await novoAtendimentoForm(page, menu);
+    await camposOpcionaisNovoAtendimento(page, menu);
+    await novoAtendimentoFinalizar(page, menu);
+  }*/
 });
