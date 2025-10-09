@@ -1,8 +1,8 @@
 import { test, expect, FrameLocator, Page, Frame } from '@playwright/test';
-import { randomSelect, randomSelect2, login, waitForAjax, debugSelectorCounts } from '../lib/utils';
+import { randomSelect, randomSelect2, login, waitForAjax} from '../lib/utils';
 
 
-async function selectContratoNative(menu: Page | Frame, blacklist: string[] = []): Promise<string> {
+async function selectContratoNative(menu: Page | Frame | FrameLocator, blacklist: string[] = []): Promise<string> {
   const native = menu.locator('#id_sc_field_cliente_contrato');
   await native.waitFor({ state: 'attached', timeout: 10_000 });
 
@@ -33,7 +33,7 @@ async function selectContratoNative(menu: Page | Frame, blacklist: string[] = []
   return choice.label;
 }
 
-async function selectContatosNative(menu: Page | Frame, blacklist: string[] = []): Promise<string> {
+async function selectContatosNative(menu: Page | Frame | FrameLocator, blacklist: string[] = []): Promise<string> {
   const native = menu.locator('#id_sc_field_cliente_contato');
   await native.waitFor({ state: 'attached', timeout: 10_000 });
 
@@ -70,8 +70,8 @@ function getAtendimentoFrame(page: Page) {
 }
 
 type ResolveOpts = {
-  waitForAtend?: boolean;   // wait for the dynamic iframe to show up
-  timeoutMs?: number;       // how long to wait for it
+  waitForAtend?: boolean;
+  timeoutMs?: number;
 };
 
 async function resolveAtendimentoScope(
@@ -80,15 +80,11 @@ async function resolveAtendimentoScope(
   opts: ResolveOpts = {}
 ): Promise<FrameLocator> {
   const { waitForAtend = false, timeoutMs = 8000 } = opts;
-
   const findAtend = () => page.frames().find(f => (f.name() || '').startsWith('atend_Novo'));
-
-  // Fast check first
   if (findAtend()) {
     return appMenuFrame.frameLocator('iframe[name^="atend_Novo"]');
   }
 
-  // Optionally wait a bit (use this right after Execução opens the form)
   if (waitForAtend) {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
@@ -98,8 +94,6 @@ async function resolveAtendimentoScope(
       await page.waitForTimeout(150);
     }
   }
-
-  // Fallback to the base frame
   return appMenuFrame;
 }
 
@@ -112,15 +106,15 @@ async function runNovoAtendimentoFlow(
 
   await novoAtendimentoForm(page, scope);
   await camposOpcionaisNovoAtendimento(page, scope);
-  await novoAtendimentoFinalizar(page, scope);
+  await novoAtendimentoExecFinalizar(page, scope);
 }
 
-async function informativo(page) {
+async function informativo(page: Page) {
   await page.getByText('x', { exact: true }).click();
   await page.locator('img').first().click();
 }
 
-async function novoAtendimentoClientesCad(page, menu) {
+async function novoAtendimentoClientesCad(page: Page, menu: FrameLocator) {
   await page.getByRole('link', { name: 'Empresa' }).click();
   await page.getByRole('link', { name: 'Clientes' }).click();
   await page.locator('#item_13').click();
@@ -131,7 +125,7 @@ async function novoAtendimentoClientesCad(page, menu) {
   await atdNovoBtn.click();
 }
 
-async function novoAtendimentoExecucao(page, menu) {
+async function novoAtendimentoExecucao(page: Page, menu: FrameLocator) {
   await page.locator('img').first().click();
   await page.getByRole('link', { name: 'Atendimento' }).click();
   await page.locator('#item_59').click();
@@ -155,12 +149,9 @@ async function novoAtendimentoExecucao(page, menu) {
   await page.keyboard.type("1");
   await page.keyboard.press('Tab');
   await waitForAjax(page);
-
-
-
 }
 
-async function novoAtendimentoForm(page, menu) {
+async function novoAtendimentoForm(page: Page, menu: FrameLocator) {
   await waitForAjax(page);
 
   await expect(menu.getByText('Novo Atendimento')).toBeVisible();
@@ -173,12 +164,10 @@ async function novoAtendimentoForm(page, menu) {
   await waitForAjax(page, 500);
 
   if (informarSelector === 'F') {
-    //await expect(menu.getByText('fluxo')).toBeVisible();
     await randomSelect2(menu, '#select2-id_sc_field_fluxo-container', ['selecione', '(selecione)']);
     await waitForAjax(page);
   }
   else {
-    //await expect(menu.getByText('Tipo')).toBeVisible();
     await randomSelect(menu, '#id_sc_field_tipo', ['selecione', '(selecione)']);
     await waitForAjax(page);
 
@@ -191,7 +180,7 @@ async function novoAtendimentoForm(page, menu) {
   await page.keyboard.type("Atendimento aberto pelo teste automatizado.");
 }
 
-async function camposOpcionaisNovoAtendimento(page, menu) {
+async function camposOpcionaisNovoAtendimento(page: Page, menu: FrameLocator) {
   {//Campo contato
     const contatoLabel = menu.locator("#id_label_cliente_contato");
     await expect(contatoLabel).toBeVisible();
@@ -218,7 +207,7 @@ async function camposOpcionaisNovoAtendimento(page, menu) {
   }
 }
 
-async function novoAtendimentoFinalizar(page, menu) {
+async function novoAtendimentoFinalizar(page: Page, menu: FrameLocator) {
   await menu.locator('#sub_form_b').click();
   await waitForAjax(page);
 
@@ -229,6 +218,11 @@ async function novoAtendimentoFinalizar(page, menu) {
   await expect(assunto).toBeVisible();
   await expect(assunto).toHaveValue('Atendimento aberto pelo teste automatizado.');
   await expect(menu.locator('#id_sc_field_ndesignar')).toHaveValue('N');
+}
+
+async function novoAtendimentoExecFinalizar(page: Page, menu: FrameLocator) {
+  await menu.locator('#sub_form_b').click();
+  await waitForAjax(page);
 }
 
 test('Abertura de atendimentos', async ({ page }) => {
@@ -252,10 +246,4 @@ test('Abertura de atendimentos', async ({ page }) => {
   
     await novoAtendimentoExecucao(page, appMenu);
     await runNovoAtendimentoFlow(page, appMenu, { waitForAtend: true });
-
-  /*await novoAtendimentoExecucao(page, menu);{
-    await novoAtendimentoForm(page, menu);
-    await camposOpcionaisNovoAtendimento(page, menu);
-    await novoAtendimentoFinalizar(page, menu);
-  }*/
 });

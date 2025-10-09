@@ -1,5 +1,5 @@
-import { test, expect, Page, Locator } from '@playwright/test';
-import { randomSelect, randomSelect2, login, waitForAjax, validateFields, retryUntil } from '../../lib/utils';
+import { FrameLocator, test, expect, Page, Locator } from '@playwright/test';
+import { randomSelect2, login, waitForAjax, validateFields, retryUntil } from '../../lib/utils';
 
 /*
 Fluxo do teste:
@@ -7,7 +7,7 @@ Fluxo do teste:
 2 - valida ajax da aba estoque mudando os campos e validando os valores
 */
 
-async function acessarDadosGerais(page, menu) {
+async function acessarDadosGerais(page: Page, menu: FrameLocator) {
   await page.getByText('x', { exact: true }).click();
   await page.locator('img').first().click();
   await page.getByRole('link', { name: 'Empresa' }).click();
@@ -16,7 +16,7 @@ async function acessarDadosGerais(page, menu) {
   await menu.locator('#id_cad_empresa_form2').click();
 }
 
-async function validacaoAjaxPedidos(page, menu) {
+async function validacaoAjaxPedidos(page: Page, menu: FrameLocator) {
   await menu.locator('#id_cad_empresa_form4').click();
   await expect(menu.locator('#id_label_pedbancopadrao')).toBeVisible();
 

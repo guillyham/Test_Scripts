@@ -1,5 +1,5 @@
-import { test, expect, Locator, Page, Frame, selectors} from '@playwright/test';
-import { randomSelect, randomSelect2, login, validateFields, waitForAjax, retryUntil, } from '../lib/utils';
+import { test, expect, Locator, Page, FrameLocator} from '@playwright/test';
+import { randomSelect, randomSelect2, login, validateFields, waitForAjax, retryUntil } from '../lib/utils';
 /*
 FLuxo do teste:
   1 - Acessar o sistema
@@ -9,7 +9,7 @@ FLuxo do teste:
   5 - Finalizar o cadastro
 */
 
-async function novoPlano(page, menu) {
+async function novoPlano(page: Page, menu: FrameLocator) {
   await page.getByText('x', { exact: true }).click();
   await page.locator('img').first().click();
   await page.getByRole('link', { name: 'Empresa' }).click();
@@ -21,7 +21,7 @@ async function novoPlano(page, menu) {
   await menu.locator('#sc_b_new_top').click();
 }
 
-async function incluirRegistro(page, menu) {
+async function incluirRegistro(page: Page, menu: FrameLocator)  {
   await menu.locator('#id_label_descricao').waitFor({ state: 'visible' });
   await menu.locator('#id_sc_field_descricao').fill('Plano Teste');
   const nomePlano = menu.locator('#id_sc_field_descricao');
@@ -144,7 +144,7 @@ async function incluirRegistro(page, menu) {
 
 }
 
-async function configuracaoFiscal(page, menu) {
+async function configuracaoFiscal(page: Page, menu: FrameLocator)  {
   const codigoPlano = await menu.locator('#id_sc_field_codigo').inputValue(); 
 
   await retryUntil(async () => {

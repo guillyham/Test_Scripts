@@ -1,5 +1,5 @@
-import { test, expect, Page, Locator } from '@playwright/test';
-import { randomSelect, randomSelect2, login, waitForAjax, validateFields, retryUntil } from '../../lib/utils';
+import { test, expect, Page, Locator, FrameLocator } from '@playwright/test';
+import { randomSelect, login, waitForAjax, validateFields, retryUntil } from '../../lib/utils';
 
 /*
 FLuxo do teste:
@@ -9,8 +9,7 @@ FLuxo do teste:
   4 - Na aba terceiros configurar os campos e validar ajax
 */
 
-async function acessarPlanos(page, menu) {
-
+async function acessarPlanos(page: Page, menu: FrameLocator) {
   await page.getByText('x', { exact: true }).click();
   await page.locator('img').first().click();
   await page.getByRole('link', { name: 'Empresa' }).click();
@@ -19,21 +18,20 @@ async function acessarPlanos(page, menu) {
   await page.locator('#item_11').click();
 }
 
-async function validacaoAjaxPlanos(page, menu) {
-  const isInvalidText = (s: string) => {
-    const v = (s ?? '').trim().toLowerCase();
-    return v === '' || v === 'selecione' || v === '(selecione)' || v === 'padrão';
-  };
-
+async function validacaoAjaxPlanos(page: Page, menu: FrameLocator) {
   type ChangedField = { name: 'cobrPTerceiro' | 'cobrDTerceiro'; locator: Locator };
   const altered: ChangedField[] = [];
 
   await waitForAjax(page);
   await expect(menu.getByText('Cadastro de Planos')).toBeVisible();
 
-  const editBtn = menu.locator('tr:has(td:has-text("TESTE TIP")) a#bedit').first();
-  await expect(editBtn).toBeVisible();
-  await editBtn.click();
+  const allEditButtons = menu.locator('a#bedit');
+  const count = await allEditButtons.count();
+  if (count === 0) {
+    throw new Error("No plans found to edit. Cannot proceed with the test.");
+  }
+  const randomIndex = Math.floor(Math.random() * count);
+  await allEditButtons.nth(randomIndex).click();
   await waitForAjax(page);
 
   await menu.locator('#id_cad_planos_cadastro_form4').click();
@@ -51,38 +49,37 @@ async function validacaoAjaxPlanos(page, menu) {
   await waitForAjax(page);
   await expect(cobrancaPTerceiro).toHaveValue(cobrancaPTerceiroSelector);
   await validateFields(cobrancaPTerceiro);
-  
+
   const cobrancaPTerceiroNew = await cobrancaPTerceiro.inputValue();
   if (cobrancaPTerceiroNew && cobrancaPTerceiroNew !== cobrancaPTerceiroOri) {
     altered.push({ name: 'cobrPTerceiro', locator: cobrancaPTerceiro });
     await waitForAjax(page, 500);
 
     const cobrPtercSecond = await randomSelect(menu, '#id_sc_field_cobrptp');
-    const cobrPtercSecondSelector = await menu.locator('#id_sc_field_cobrptp').inputValue();  
+    const cobrPtercSecondSelector = await menu.locator('#id_sc_field_cobrptp').inputValue();
     await waitForAjax(page);
-      if(cobrPtercSecondSelector === 'S') {
-        await waitForAjax(page);
-        const icon = menu.locator('.icon_fa.fas.fa-forward').first();
-        await expect(icon).toBeVisible();
-        await icon.click();
-        await waitForAjax(page);
+    if (cobrPtercSecondSelector === 'S') {
+      await waitForAjax(page);
+      const icon = menu.locator('.icon_fa.fas.fa-forward').first();
+      await expect(icon).toBeVisible();
+      await icon.click();
+      await waitForAjax(page);
 
-        const cobrPTerceirosContratos = randomSelect(menu, '#id_sc_field_ptcon', ['(Selecione um Terceiro para inicializar os contratos deste plano)']);
-        const cobrPTerceirosPacotes = randomSelect(menu, '#id_sc_field_ptpac', ['(Selecione um Terceiro para inicializar os pacotes que contém este plano)']);
-        await waitForAjax(page);
+      const cobrPTerceirosContratos = randomSelect(menu, '#id_sc_field_ptcon', ['(Selecione um Terceiro para inicializar os contratos deste plano)']);
+      const cobrPTerceirosPacotes = randomSelect(menu, '#id_sc_field_ptpac', ['(Selecione um Terceiro para inicializar os pacotes que contém este plano)']);
+      await waitForAjax(page);
 
-        await menu.locator('#sc_b_upd_t').click();
-      }
-        else{
-        const cobrPTerceirosContratos = randomSelect(menu, '#id_sc_field_ptcon', ['(Selecione um Terceiro para inicializar os contratos deste plano)']);
-        const cobrPTerceirosPacotes = randomSelect(menu, '#id_sc_field_ptpac', ['(Selecione um Terceiro para inicializar os pacotes que contém este plano)']);
-        await waitForAjax(page);
+      await menu.locator('#sc_b_upd_t').click();
+    }
+    else {
+      const cobrPTerceirosContratos = randomSelect(menu, '#id_sc_field_ptcon', ['(Selecione um Terceiro para inicializar os contratos deste plano)']);
+      const cobrPTerceirosPacotes = randomSelect(menu, '#id_sc_field_ptpac', ['(Selecione um Terceiro para inicializar os pacotes que contém este plano)']);
+      await waitForAjax(page);
 
-        await menu.locator('#sc_b_upd_t').click();
-        }
+      await menu.locator('#sc_b_upd_t').click();
+    }
   }
-  else
-  {
+  else {
     const sel = menu.locator('#id_sc_field_cobrpt');
     await sel.selectOption({ index: 0 });
     await waitForAjax(page);
@@ -103,30 +100,27 @@ async function validacaoAjaxPlanos(page, menu) {
     altered.push({ name: 'cobrDTerceiro', locator: cobrancaDTerceiro });
 
     const cobrDtercSecond = await randomSelect(menu, '#id_sc_field_cobrdtp');
-    const cobrDtercSecondSelector = await menu.locator('#id_sc_field_cobrdtp').inputValue();  
+    const cobrDtercSecondSelector = await menu.locator('#id_sc_field_cobrdtp').inputValue();
     await waitForAjax(page);
-    if(cobrDtercSecondSelector === 'S')
-    {
-        await waitForAjax(page);
-        await page.locator('iframe[name="app_menu_iframe"]').contentFrame().getByRole('cell', { name: '   ', exact: true }).locator('#Bbpassfld_rightall').click();
-        await waitForAjax(page);
+    if (cobrDtercSecondSelector === 'S') {
+      await waitForAjax(page);
+      await page.locator('iframe[name="app_menu_iframe"]').contentFrame().getByRole('cell', { name: '   ', exact: true }).locator('#Bbpassfld_rightall').click();
+      await waitForAjax(page);
 
-        const cobrPTerceirosContratos = randomSelect(menu, '#id_sc_field_dtcon', ['(Selecione um Terceiro para inicializar os contratos deste plano)']);
-        const cobrPTerceirosPacotes = randomSelect(menu, '#id_sc_field_dtpac', ['(Selecione um Terceiro para inicializar os pacotes que contém este plano)']);
-        await waitForAjax(page);
-        await menu.locator('#sc_b_upd_t').click();
+      const cobrPTerceirosContratos = randomSelect(menu, '#id_sc_field_dtcon', ['(Selecione um Terceiro para inicializar os contratos deste plano)']);
+      const cobrPTerceirosPacotes = randomSelect(menu, '#id_sc_field_dtpac', ['(Selecione um Terceiro para inicializar os pacotes que contém este plano)']);
+      await waitForAjax(page);
+      await menu.locator('#sc_b_upd_t').click();
     }
-    else
-    {
-        await waitForAjax(page);
-        const cobrPTerceirosContratos = randomSelect(menu, '#id_sc_field_dtcon', ['(Selecione um Terceiro para inicializar os contratos deste plano)']);
-        const cobrPTerceirosPacotes = randomSelect(menu, '#id_sc_field_dtpac', ['(Selecione um Terceiro para inicializar os pacotes que contém este plano)']);
-        await waitForAjax(page);
-        await menu.locator('#sc_b_upd_t').click();
+    else {
+      await waitForAjax(page);
+      const cobrPTerceirosContratos = randomSelect(menu, '#id_sc_field_dtcon', ['(Selecione um Terceiro para inicializar os contratos deste plano)']);
+      const cobrPTerceirosPacotes = randomSelect(menu, '#id_sc_field_dtpac', ['(Selecione um Terceiro para inicializar os pacotes que contém este plano)']);
+      await waitForAjax(page);
+      await menu.locator('#sc_b_upd_t').click();
     }
   }
-  else
-  {
+  else {
     const sel = menu.locator('#id_sc_field_cobrdt');
     await sel.selectOption({ index: 0 });
     await waitForAjax(page);

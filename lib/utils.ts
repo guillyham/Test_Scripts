@@ -1,9 +1,8 @@
-import { expect, Locator, Page, Frame } from '@playwright/test';
-  require('dotenv').config();
-
+import { expect, Locator, Page, Frame, FrameLocator } from '@playwright/test';
+require('dotenv').config();
 
 export async function randomSelect(
-  menu: Page | Frame,
+  menu: Page | Frame | FrameLocator,
   selectSelector: string,
   blacklist: string[] = ['0']
 ): Promise<string> {
@@ -42,7 +41,7 @@ export async function randomSelect(
 }
 
 export async function randomSelect2(
-  menu: Page | Frame,
+  menu: Page | Frame | FrameLocator,
   dropdownTriggerSelector: string,
   blacklist: string[] = []
 ): Promise<string> {
@@ -148,7 +147,7 @@ export async function validateFields(
   }
 }
 
-export async function login(page) {
+export async function login(page: Page) {
   const usuario = process.env.USUARIO;
   const senha = process.env.SENHA;
 

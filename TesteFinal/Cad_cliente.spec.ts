@@ -1,5 +1,5 @@
-import { test, expect, Locator, Page, Frame} from '@playwright/test';
-import { randomSelect, randomSelect2, login, validateFields} from '../lib/utils';
+import { test, expect, Locator, Page, FrameLocator, Frame } from '@playwright/test';
+import { randomSelect, randomSelect2, login, validateFields, waitForAjax } from '../lib/utils';
 
 /*
 Fluxo do teste:
@@ -17,13 +17,13 @@ function getFrames(page: Page) {
 }
 
 // Gera pessoa para pegar os dados
-async function gerarCliente(newPage) {
+async function gerarCliente(newPage: Page) {
   await newPage.goto('https://www.4devs.com.br/gerador_de_pessoas', { waitUntil: 'domcontentloaded' });
   await newPage.getByRole('button', { name: 'Gerar Pessoa' }).click();
 }
 
 // Abre cadastro de clientes
-async function acessarCadastro(page) {
+async function acessarCadastro(page: Page) {
   await page.getByText('x', { exact: true }).click();
   await page.locator('img').first().click();
   await page.getByRole('link', { name: 'Empresa' }).click();
@@ -32,9 +32,9 @@ async function acessarCadastro(page) {
 }
 
 // Cria um novo registro e preenche os campos: CPF, NOME e CEP
-async function preencherCampos(page, newPage, menu) {
+async function preencherCampos(page: Page, newPage: Page, menu: FrameLocator) {
   await menu.getByTitle('Abrir um novo registro').click();
-  
+
   const radioPF = menu.getByRole('radio', { name: 'Pessoa Física' });
 
   if (!(await radioPF.isChecked())) {
@@ -44,13 +44,13 @@ async function preencherCampos(page, newPage, menu) {
   // Optional sanity check: wait until CPF label becomes visible/updated
   await expect(menu.locator('#id_label_br_cnpj_cnpf')).toContainText('CPF', { timeout: 10000 });
   await menu.getByText('CPF *').waitFor();
- 
+
   await newPage.bringToFront();
   await newPage.locator('#nome span').nth(1).click();
   await page.bringToFront();
   await menu.locator('#id_sc_field_nome').click();
   await page.keyboard.press('Control+V');
-  const nomeInput = menu.locator('#id_sc_field_nome'); 
+  const nomeInput = menu.locator('#id_sc_field_nome');
   await validateFields(nomeInput);//so procede apos o campo nome ter valor.
 
   await newPage.bringToFront();
@@ -58,7 +58,7 @@ async function preencherCampos(page, newPage, menu) {
   await page.bringToFront();
   await menu.locator('#id_sc_field_br_cnpj_cnpf').click();
   await page.keyboard.press('Control+V');
-  const cpf_cnpjInput = menu.locator('#id_sc_field_br_cnpj_cnpf'); 
+  const cpf_cnpjInput = menu.locator('#id_sc_field_br_cnpj_cnpf');
   await validateFields(cpf_cnpjInput);//so procede apos o campo cpf_cnpj ter valor.
 
   await newPage.bringToFront();
@@ -67,16 +67,16 @@ async function preencherCampos(page, newPage, menu) {
   await menu.locator('#id_sc_field_br_cep').click();
   await page.keyboard.press('Control+V');
 
-  const cepInput = menu.locator('#id_sc_field_br_cep'); 
+  const cepInput = menu.locator('#id_sc_field_br_cep');
   await validateFields(cepInput);//so procede apos o campo cep ter valor.
 
   await menu.locator('#id_sc_field_endereco').click();
-  const enderecoInput = menu.locator('#id_sc_field_endereco'); 
+  const enderecoInput = menu.locator('#id_sc_field_endereco');
   await validateFields(enderecoInput);//so procede apos o campo endereco ter valor.
 
   await menu.getByAltText('{datatype: \'text\', maxLength: 20, allowedChars: \'0123456789SsNn/\', lettersCase').click();
   await menu.getByAltText('{datatype: \'text\', maxLength: 20, allowedChars: \'0123456789SsNn/\', lettersCase').fill('123');
-  
+
   //Banco + convenio
   await menu.locator('#id_sc_field_bcocobr').selectOption('1'); //Valor dinamico trocar de acordo com a necessidade
   await menu.locator('#id_sc_field_cobr_convenio').selectOption('1234-5678-13579-Convênio BB'); //Base teste final
@@ -89,7 +89,7 @@ async function preencherCampos(page, newPage, menu) {
   await menu.locator('#id_sc_field_email').click();
   await page.keyboard.press('Control+V');
 
-  const emailInput = menu.locator('#id_sc_field_email'); 
+  const emailInput = menu.locator('#id_sc_field_email');
   await validateFields(emailInput);
 
   await menu.locator('#id_sc_field_observacoes').click();
@@ -97,10 +97,10 @@ async function preencherCampos(page, newPage, menu) {
 }
 
 // Validações para campos obrigatório que podem estar marcados ou nao
-async function camposOpcionais(page, newPage, menu) {
+async function camposOpcionais(page: Page, newPage: Page, menu: Page | FrameLocator | Frame) {
   //Endereço de cobrança
   await menu.locator('#SC_blk_pdf6').click();
-  await menu.locator('#SC_blk_pdf13').click();
+  await menu.locator('#SC_blk_pdf14').click();
 
   //Grupo
   {
@@ -120,11 +120,11 @@ async function camposOpcionais(page, newPage, menu) {
   {
     const endCepLabel = menu.locator('#id_label_br_cobr_cep');
     await expect(endCepLabel).toBeVisible();
-    const cepLabelText  = await endCepLabel.textContent();
-    if (cepLabelText  && cepLabelText .includes('*')) {
+    const cepLabelText = await endCepLabel.textContent();
+    if (cepLabelText && cepLabelText.includes('*')) {
       const cepOrig = await menu.locator('#id_sc_field_br_cep').inputValue();
       await menu.locator('#id_sc_field_br_cobr_cep').fill(cepOrig.trim());
-      
+
       const CEPInput = menu.locator('#id_sc_field_br_cobr_cep');
       await validateFields(CEPInput);
 
@@ -133,7 +133,7 @@ async function camposOpcionais(page, newPage, menu) {
 
       const cobrCidadeInput = menu.locator('#id_sc_field_cobr_cidade');
       await validateFields(cobrCidadeInput);
-      
+
       await page.keyboard.type('1');
 
       const cobrEndInpu = menu.locator('#id_sc_field_cobr_endereco');
@@ -141,19 +141,19 @@ async function camposOpcionais(page, newPage, menu) {
 
       const cobrNumeroInot = menu.locator('#id_sc_field_cobr_numero');
       await validateFields(cobrNumeroInot);
-      }
+    }
   }
 
   //Completo Cobrança
-  {  
+  {
     const cobrComplementoLabel = menu.locator('#id_label_cobr_complemento');
     await expect(cobrComplementoLabel).toBeVisible();
-    const cobrComplementoText  = await cobrComplementoLabel.textContent();
-    if (cobrComplementoText  && cobrComplementoText .includes('*')) {
+    const cobrComplementoText = await cobrComplementoLabel.textContent();
+    if (cobrComplementoText && cobrComplementoText.includes('*')) {
       const cobrComplementoValida = await menu.locator('#id_sc_field_cobr_complemento');
       await cobrComplementoValida.click();
       await page.keyboard.type("Felipe Was Here! Complemento Cobr.");
-      
+
       const cobrComplementoInput = menu.locator('#id_sc_field_cobr_complemento');
       await validateFields(cobrComplementoInput);
     }
@@ -171,7 +171,7 @@ async function camposOpcionais(page, newPage, menu) {
       await menu.locator("#id_sc_field_nascimento").click();
       await page.keyboard.press('Control+V');
 
-      const nascimentoInput = menu.locator('#id_sc_field_nascimento'); 
+      const nascimentoInput = menu.locator('#id_sc_field_nascimento');
       await validateFields(nascimentoInput);
     }
   }
@@ -186,7 +186,7 @@ async function camposOpcionais(page, newPage, menu) {
       await rgValida.click();
       await page.keyboard.type("ISENTO");
 
-      const rgInput = menu.locator('#id_sc_field_rg_ie'); 
+      const rgInput = menu.locator('#id_sc_field_rg_ie');
       await validateFields(rgInput);
     }
   }
@@ -200,11 +200,11 @@ async function camposOpcionais(page, newPage, menu) {
       await newPage.bringToFront();
       await newPage.locator('#cor span').nth(1).click();
       await page.bringToFront();
-      const siglaValida =  await menu.locator("#id_sc_field_sigla");
+      const siglaValida = await menu.locator("#id_sc_field_sigla");
       await siglaValida.click();
       await page.keyboard.press('Control+V');
 
-      const siglaInput = menu.locator('#id_sc_field_sigla'); 
+      const siglaInput = menu.locator('#id_sc_field_sigla');
       await validateFields(siglaInput);
     }
   }
@@ -219,7 +219,7 @@ async function camposOpcionais(page, newPage, menu) {
       await complementoValida.click();
       await page.keyboard.type("Felipe Was Here! Complemento.");
 
-      const complementoInput = menu.locator('#id_label_complemento'); 
+      const complementoInput = menu.locator('#id_label_complemento');
       await validateFields(complementoInput);
     }
   }
@@ -230,11 +230,11 @@ async function camposOpcionais(page, newPage, menu) {
     await expect(distritoLabel).toBeVisible();
     const distrito = await distritoLabel.textContent();
     if (distrito && distrito.includes('*')) {
-      const distritiValida = await menu.locator('#id_sc_field_distrito'); 
+      const distritiValida = await menu.locator('#id_sc_field_distrito');
       await distritiValida.click();
       await page.keyboard.type("Felipe Was Here! Distrito.");
 
-      const distritoInput = menu.locator('#id_label_distrito'); 
+      const distritoInput = menu.locator('#id_label_distrito');
       await validateFields(distritoInput);
     }
   }
@@ -249,7 +249,7 @@ async function camposOpcionais(page, newPage, menu) {
       await tComercialValida.click();
       await page.keyboard.type("4432323232");
 
-      const tComercialInput = menu.locator('#id_sc_field_telcomercial'); 
+      const tComercialInput = menu.locator('#id_sc_field_telcomercial');
       await validateFields(tComercialInput);
     }
   }
@@ -264,7 +264,7 @@ async function camposOpcionais(page, newPage, menu) {
       await tResidValida.click();
       await page.keyboard.type("4432323232");
 
-      const tResidInput = menu.locator('#id_sc_field_telresidencial'); 
+      const tResidInput = menu.locator('#id_sc_field_telresidencial');
       await validateFields(tResidInput);
     }
   }
@@ -278,11 +278,11 @@ async function camposOpcionais(page, newPage, menu) {
       const tCelularValida = await menu.locator('#id_sc_field_telcelular');
       await tCelularValida.click();
       await page.keyboard.type("44999123456");
-      
-      const tCelularInput = menu.locator('#id_sc_field_telcelular'); 
-      await validateFields(tCelularInput);    
+
+      const tCelularInput = menu.locator('#id_sc_field_telcelular');
+      await validateFields(tCelularInput);
     }
-  }  
+  }
 
   //Grupo Cobr
   {
@@ -291,10 +291,10 @@ async function camposOpcionais(page, newPage, menu) {
     const grupCobr = (await grupoCobrLabel.textContent())?.trim() ?? '';
 
     if (grupCobr && grupCobr.includes("*")) {
-      const selectedValue = await randomSelect2(menu,'[aria-labelledby="select2-id_sc_field_cobr_grupo-container"]', ['padrão']);
+      const selectedValue = await randomSelect2(menu, '[aria-labelledby="select2-id_sc_field_cobr_grupo-container"]', ['padrão']);
 
       const grupCobrInput = menu.locator('#select2-id_sc_field_cobr_grupo-container');
-      await validateFields(grupCobrInput); 
+      await validateFields(grupCobrInput);
     }
   }
 
@@ -308,7 +308,7 @@ async function camposOpcionais(page, newPage, menu) {
       const selectedValue = await randomSelect(menu, '#id_sc_field_diacobr');
 
       const diaVencInput = menu.locator('#id_sc_field_diacobr');
-      await validateFields(diaVencInput); 
+      await validateFields(diaVencInput);
     }
   }
 
@@ -322,29 +322,20 @@ async function camposOpcionais(page, newPage, menu) {
       const selectedValue = await randomSelect(menu, '#id_sc_field_nfcfop');
 
       const cfopInput = menu.locator('#id_sc_field_nfcfop');
-      await validateFields(cfopInput); 
+      await validateFields(cfopInput);
     }
   }
 }
 
 // Finaliza o cadastro
-async function incluirRegistro(menu) {
+async function incluirRegistro(page: Page, menu: FrameLocator) {
   await menu.getByTitle('Incluir registro(s)').click();
-  await menu.locator('iframe[name="item_1"]').waitFor({ state: 'attached', timeout: 45000 });
-  const item1Frame = await (await menu.locator('iframe[name="item_1"]').elementHandle()).contentFrame();
-  
-  await item1Frame.waitForFunction(() => {
-    return document.querySelector('#id_read_on_codigo')?.textContent?.trim() !== '';
-  });
+  await waitForAjax(page, 2000);
 
-  const clientCodeLocator = menu.frameLocator('iframe[name="item_1"]').locator('#id_read_on_codigo');
-  await clientCodeLocator.waitFor({state: 'visible'});
-  const clientCode = await clientCodeLocator.textContent();
-  console.log('Client code:', clientCode);
 }
 
 // Plano fixo Inicio
-async function contratoStart(menu, item5, tb) {
+async function contratoStart(menu: FrameLocator, item5: FrameLocator, tb: FrameLocator) {
   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
   await expect(contrato).toBeVisible();
   await contrato.click();
@@ -377,7 +368,7 @@ async function contratoStart(menu, item5, tb) {
 }
 
 // Plano dinamico Inicio
-async function contratoDinamicoStart(menu, item5, tb) {
+async function contratoDinamicoStart(page: Page, menu: FrameLocator, item5: FrameLocator, tb: FrameLocator) {
   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
   await expect(contrato).toBeVisible();
   await contrato.click();
@@ -409,58 +400,57 @@ async function contratoDinamicoStart(menu, item5, tb) {
 }
 
 // Valida campos opcionais
-async function camposOpcionaisContratos(page, newPage, tb, item5, menu) {
+async function camposOpcionaisContratos(page: Page, newPage: Page, menu: FrameLocator, tb: FrameLocator) {
   //Endereço de Instalação
   {
-    const edInstLabel = menu.locator("#hidden_bloco_14");
+    const edInstLabel = tb.locator('#hidden_bloco_14').getByText('Endereço de Instalação');
     await expect(edInstLabel).toBeVisible();
     const edInst = (await edInstLabel.textContent())?.trim() ?? '';
     if (edInst && edInst.includes("*")) {
-        await menu.locator('#id-opt-enderecoinstalacao-1').check();
-        await expect(menu.locator('#id_label_cep')).toBeVisible();
-        
-        await newPage.bringToFront();
-        await newPage.locator('#cep span').nth(1).click();
-        await page.bringToFront();
-        await menu.locator('#id_sc_field_cep').click();
-        await page.keyboard.press('Control+V');
+      await menu.locator('#id-opt-enderecoinstalacao-1').check();
+      await expect(menu.locator('#id_label_cep')).toBeVisible();
 
-        const CEPInput = menu.locator('#id_sc_field_cep');
-        await validateFields(CEPInput);
+      await newPage.bringToFront();
+      await newPage.locator('#cep span').nth(1).click();
+      await page.bringToFront();
+      await menu.locator('#id_sc_field_cep').click();
+      await page.keyboard.press('Control+V');
 
-        const contrNumeroTxt = menu.locator('#id_sc_field_numend');
-        await contrNumeroTxt.click();
-        await page.keyboard.type('123');
+      const CEPInput = menu.locator('#id_sc_field_cep');
+      await validateFields(CEPInput);
 
-        const contrCidadeInput = menu.locator('#id_sc_field_cidade');
-        await validateFields(contrCidadeInput);
+      const contrNumeroTxt = menu.locator('#id_sc_field_numend');
+      await contrNumeroTxt.click();
+      await page.keyboard.type('123');
+
+      const contrCidadeInput = menu.locator('#id_sc_field_cidade');
+      await validateFields(contrCidadeInput);
     }
   }
-
   //Endereço cobrança
   {
-    const edInstLabel = menu.locator("#hidden_bloco_16");
+    const edInstLabel = tb.locator("#hidden_bloco_16").getByText('Endereço de Cobrança');
     await expect(edInstLabel).toBeVisible();
     const edInst = (await edInstLabel.textContent())?.trim() ?? '';
     if (edInst && edInst.includes("*")) {
-        await menu.locator('#id-opt-enderecocobranca-1').check();
-        await expect(menu.locator('#id_sc_field_cobr_cep')).toBeVisible();
-        
-        await newPage.bringToFront();
-        await newPage.locator('#cep span').nth(1).click();
-        await page.bringToFront();
-        await menu.locator('#id_sc_field_cobr_cep').click();
-        await page.keyboard.press('Control+V');
+      await menu.locator('#id-opt-enderecocobranca-1').check();
+      await expect(menu.locator('#id_sc_field_cobr_cep')).toBeVisible();
 
-        const CEPInput = menu.locator('#id_sc_field_cobr_cep');
-        await validateFields(CEPInput);
+      await newPage.bringToFront();
+      await newPage.locator('#cep span').nth(1).click();
+      await page.bringToFront();
+      await menu.locator('#id_sc_field_cobr_cep').click();
+      await page.keyboard.press('Control+V');
 
-        const contrNumeroTxt = menu.locator('#id_sc_field_cobr_numend');
-        await contrNumeroTxt.click();
-        await page.keyboard.type('321');
+      const CEPInput = menu.locator('#id_sc_field_cobr_cep');
+      await validateFields(CEPInput);
 
-        const contrCidadeInput = menu.locator('#id_sc_field_cobr_cidade');
-        await validateFields(contrCidadeInput);
+      const contrNumeroTxt = menu.locator('#id_sc_field_cobr_numend');
+      await contrNumeroTxt.click();
+      await page.keyboard.type('321');
+
+      const contrCidadeInput = menu.locator('#id_sc_field_cobr_cidade');
+      await validateFields(contrCidadeInput);
     }
   }
 }
@@ -494,8 +484,8 @@ async function contratoFinaliza(page: Page) {
 
   try {
     const ativarBtn = item5.locator('#id_sc_field_btnativar_1');
-    await ativarBtn.waitFor({ state: 'visible', timeout: 3000 }); 
-    
+    await ativarBtn.waitFor({ state: 'visible', timeout: 3000 });
+
     await ativarBtn.click();
     await item5.getByText('Ativação de Contratos').waitFor();
 
@@ -504,8 +494,8 @@ async function contratoFinaliza(page: Page) {
     });
 
     await item5.getByTitle('Confirmar alterações').click();
-  } 
-  catch (e) {}
+  }
+  catch (e) { }
 
   // Then check status
   const statusLocator = refreshedItem5.locator('#id_sc_field_gsituacao_1');
@@ -554,7 +544,7 @@ async function contratoDinamicoFinaliza(page: Page) {
     });
 
     await refreshedItem5.getByTitle('Confirmar alterações').click();
-  } catch (e) {}
+  } catch (e) { }
 
   const statusLocator = refreshedItem5.locator('#id_sc_field_gsituacao_1');
   await expect(statusLocator).toBeVisible({ timeout: 10000 });
@@ -583,14 +573,14 @@ test('Cadastro completo de cliente com contrato fixo', async ({ page, context })
   await acessarCadastro(page);
   await preencherCampos(page, newPage, menu);
   await camposOpcionais(page, newPage, menu);
-  const clientCode = await incluirRegistro(menu);
+  await incluirRegistro(page, menu);
 
   //Inicia contrato fixo
   //await contratoStart(page, menu, item5); 
   //Inicia contrato Dinamico
-  await contratoDinamicoStart(page, menu, item5);
+  await contratoDinamicoStart(page, menu, item5, tb);
 
-  await camposOpcionaisContratos(page, newPage, menu, item5, tb);
+  await camposOpcionaisContratos(page, newPage, menu, tb);
 
   //Finaliza contrato 
   //await contratoFinaliza(page);
