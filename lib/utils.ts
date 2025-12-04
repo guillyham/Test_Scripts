@@ -87,6 +87,60 @@ export async function randomSelect2(
   return random.text;
 }
 
+export async function robustRandomSelect2(
+  menu: Page | Frame | FrameLocator,
+  dropdownTriggerSelector: string,
+  blacklist: string[] = []
+): Promise<string> {
+  let selectedText = '';
+
+  await retryUntil(async () => {
+    const trigger = menu.locator(dropdownTriggerSelector);
+    await expect(trigger).toBeVisible({ timeout: 5000 });
+    await trigger.click();
+
+    const optionsContainer = menu.locator('.select2-results__options');
+    await expect(optionsContainer).toBeVisible({ timeout: 5000 });
+
+    const options = optionsContainer.locator('.select2-results__option:not([aria-disabled="true"])');
+    const count = await options.count();
+
+    if (count === 0) {
+      throw new Error('No options available to select, retrying...');
+    }
+    
+    const validOptions: { index: number; text: string }[] = [];
+    for (let i = 0; i < count; i++) {
+      const option = options.nth(i);
+      const text = (await option.textContent())?.trim() ?? '';
+
+      if (text.length > 0 && !blacklist.some(b => text.toLowerCase().includes(b.toLowerCase()))) {
+        validOptions.push({ index: i, text });
+      }
+    }
+
+    if (validOptions.length === 0) {
+      throw new Error('No valid (non-blacklisted) options available, retrying...');
+    }
+
+    const random = validOptions[Math.floor(Math.random() * validOptions.length)];
+    await options.nth(random.index).click();
+
+    const selectedDisplay = menu.locator(dropdownTriggerSelector);
+    await expect(selectedDisplay).toContainText(random.text, { timeout: 3000 });
+    
+    selectedText = random.text;
+    return true; 
+    
+  }, { timeout: 15000, interval: 500 }); 
+
+  if (selectedText === '') {
+    throw new Error(`Failed to select an option for "${dropdownTriggerSelector}" after multiple retries.`);
+  }
+
+  return selectedText;
+}
+
 export type ValidationOptions = {
   timeout?: number;
   allowEmpty?: boolean;
@@ -242,3 +296,4 @@ export async function debugSelectorCounts(page: Page, selector: string) {
     console.log(`frame[${label}] '${selector}' = ${count}`);
   }
 }
+

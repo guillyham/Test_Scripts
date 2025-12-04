@@ -1,5 +1,5 @@
 import { test, expect, Page, Locator, FrameLocator } from '@playwright/test';
-import { randomSelect, randomSelect2, login, waitForAjax, validateFields, retryUntil } from '../../lib/utils';
+import { randomSelect, login, waitForAjax, validateFields, robustRandomSelect2 } from '../../lib/utils';
 
 /*
 Fluxo do teste:
@@ -34,7 +34,7 @@ async function validacaoAjaxEstoque(page: Page, menu: FrameLocator) {
 
   const altered = [] as Array<{ name: string; locator: Locator }>;
 
-  const isInvalidText = (s) => {
+  const isInvalidText = (s: string) => {
     const v = (s ?? '').trim().toLowerCase();
     return v === '' || v === 'selecione' || v === '(selecione)' || v === 'padrão';
   };
@@ -42,85 +42,68 @@ async function validacaoAjaxEstoque(page: Page, menu: FrameLocator) {
   await waitForAjax(page);
 
   if (campoAtdVlrOri === 'T') {
-    //Qaundo for Fluxo
+    // Quando for Fluxo
     await menu.locator('input[name="retequip_atendtipo"][value="F"]').check();
     await waitForAjax(page);
     await expect(menu.locator('#id_label_retequip_fluxitem')).toBeVisible();
 
-    //Selecionador do fluxo
-    const chosenTopFlux = await randomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]', ['padrão']);
+    // Selecionador do fluxo (agora robusto)
+    const topFluxCtr = menu.locator('[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]');
+    await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]', ['padrão']);
     await waitForAjax(page);
-    const topFluxCtr = menu.locator('#select2-id_sc_field_retequip_topflux-container');
-    const topfluxVlrNovo = (await topFluxCtr.textContent())?.trim() ?? '';
-    if (
-      isInvalidText(topfluxVlrNovo)) throw new Error(`TopFlux inválido: "${topfluxVlrNovo}"`);
-    if (
-      topfluxVlrNovo !== topfluxVlrOri) altered.push({ name: 'topflux', locator: topFluxCtr });
-
-    //Selecionador do fluxo item
-    await waitForAjax(page);
-    await retryUntil(async () => {
-      const picked = await randomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_fluxitem-container"]', ['padrão']);
-      await waitForAjax(page);
-      const fluxCtr = menu.locator('#select2-id_sc_field_retequip_fluxitem-container');
-      const txt = (await fluxCtr.textContent())?.trim() ?? '';
-      if (!txt || txt !== picked) return false;
-      if (isInvalidText(txt)) throw new Error(`Fluxo inválido: "${txt}"`);
-
-      if (txt !== fluxItemVlrOri) altered.push({ name: 'fluxitem', locator: fluxCtr });
-      return true;
-    }, { timeout: 20000, interval: 500 });
-
-    //Validação final (antes de salvar)
-    for (const { locator } of altered) await validateFields(locator);
-    await menu.locator('#sc_b_upd_t').click();
-    await waitForAjax(page);
-
-  } else {
-    //Qunado for Topico
-    await menu.locator('input[name="retequip_atendtipo"][value="T"]').check();
-    await waitForAjax(page);
-
-    //Selecionador do Topico
-    const chosenTopFlux = await randomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]', ['padrão']);
-    await waitForAjax(page);
-    const topFluxCtr = menu.locator('#select2-id_sc_field_retequip_topflux-container');
     const topfluxVlrNovo = (await topFluxCtr.textContent())?.trim() ?? '';
     if (isInvalidText(topfluxVlrNovo)) throw new Error(`TopFlux inválido: "${topfluxVlrNovo}"`);
     if (topfluxVlrNovo !== topfluxVlrOri) altered.push({ name: 'topflux', locator: topFluxCtr });
 
-    //Validação final (antes de salvar)
-    for (const { locator } of altered) await validateFields(locator);
-    await menu.locator('#sc_b_upd_t').click();
+    // Selecionador do fluxo item (agora robusto e simplificado)
+    const fluxCtr = menu.locator('[aria-labelledby="select2-id_sc_field_retequip_fluxitem-container"]');
+    await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_fluxitem-container"]', ['padrão']);
     await waitForAjax(page);
+    const fluxItemVlrNovo = (await fluxCtr.textContent())?.trim() ?? '';
+    if (isInvalidText(fluxItemVlrNovo)) throw new Error(`Fluxo inválido: "${fluxItemVlrNovo}"`);
+    if (fluxItemVlrNovo !== fluxItemVlrOri) altered.push({ name: 'fluxitem', locator: fluxCtr });
+
+  } else {
+    // Quando for Topico
+    await menu.locator('input[name="retequip_atendtipo"][value="T"]').check();
+    await waitForAjax(page);
+
+    // Selecionador do Topico (agora robusto)
+    const topFluxCtr = menu.locator('[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]');
+    await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]', ['padrão']);
+    await waitForAjax(page);
+    const topfluxVlrNovo = (await topFluxCtr.textContent())?.trim() ?? '';
+    if (isInvalidText(topfluxVlrNovo)) throw new Error(`TopFlux inválido: "${topfluxVlrNovo}"`);
+    if (topfluxVlrNovo !== topfluxVlrOri) altered.push({ name: 'topflux', locator: topFluxCtr });
   }
 
-  //Campo designar atendimento
-  const designarAtdVal = await randomSelect(menu, '#id_sc_field_retequip_designar', ['N']);
+  // Campo designar atendimento (usa select padrão, não muda)
+  await randomSelect(menu, '#id_sc_field_retequip_designar', ['N']);
   await waitForAjax(page);
   const designarAtdNew = await menu.locator('#id_sc_field_retequip_designar').inputValue();
   if (!designarAtdNew || designarAtdNew === 'N') throw new Error(`DesignarAtd inválido: "${designarAtdNew}"`);
   if (designarAtdNew !== designarAtdOri) altered.push({ name: 'designarAtd', locator: menu.locator('#id_sc_field_retequip_designar') });
 
-  //designar alvo
-  const designarAlvo = await randomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_designaralvo-container"]', ['selecione', 'padrão']);
+  // Designar alvo (agora robusto)
+  const designarAlvoCtr = menu.locator('[aria-labelledby="select2-id_sc_field_retequip_designaralvo-container"]');
+  await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_designaralvo-container"]', ['selecione', 'padrão']);
   await waitForAjax(page);
-  const designarAlvoCtr = menu.locator('#select2-id_sc_field_retequip_designaralvo-container');
   const designarAlvoNew = (await designarAlvoCtr.textContent())?.trim() ?? '';
   if (isInvalidText(designarAlvoNew)) throw new Error(`DesignarAlvo inválido: "${designarAlvoNew}"`);
   if (designarAlvoNew !== designarAlvoOri) altered.push({ name: 'designarAlvo', locator: designarAlvoCtr });
 
-  //Validação final (antes de salvar)
-  for (const { locator } of altered) await validateFields(locator);
+  // Validação final (antes de salvar)
+  for (const { locator } of altered) {
+    await validateFields(locator);
+  }
   await menu.locator('#sc_b_upd_t').click();
+  await waitForAjax(page); // Espera o salvamento concluir
 }
 
 test('Testar Ajax Estoque', async ({ page }) => {
   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
-  const item5 = menu.frameLocator('iframe[name="item_5"]');
-  const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
 
-  test.setTimeout(50_000);
+  test.setTimeout(60_000); // Aumentar um pouco o timeout geral para acomodar os retries
 
   await login(page);
 

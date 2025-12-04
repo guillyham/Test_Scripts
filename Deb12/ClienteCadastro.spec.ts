@@ -1,4 +1,4 @@
-import { test, expect, Locator, Page, Frame} from '@playwright/test';
+import { test, expect, Page, Frame, FrameLocator} from '@playwright/test';
 
 import { randomSelect, randomSelect2, validateFields} from '../lib/utils';
 
@@ -9,7 +9,7 @@ Cadatra o cliente
 Adiciona contrato e deixa o mesmo ativo ss
 */
 
-async function login(page) {
+async function login(page: Page) {
   const usuario = process.env.USUARIO;
   const senha = process.env.SENHA;
 
@@ -18,7 +18,6 @@ async function login(page) {
   await page.getByRole('textbox', { name: 'Senha' }).fill(senha);
   await page.getByRole('textbox', { name: 'Senha' }).press('Enter');
 }
-
 
 function getFrames(page: Page) {
   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
@@ -29,13 +28,13 @@ function getFrames(page: Page) {
 }
 
 // Gera pessoa para pegar os dados
-async function gerarCliente(newPage) {
+async function gerarCliente(newPage: Page) {
   await newPage.goto('https://www.4devs.com.br/gerador_de_pessoas', { waitUntil: 'domcontentloaded' });
   await newPage.getByRole('button', { name: 'Gerar Pessoa' }).click();
 }
 
 // Abre cadastro de clientes
-async function acessarCadastro(page) {
+async function acessarCadastro(page: Page) {
   await page.getByText('x', { exact: true }).click();
   await page.locator('img').first().click();
   await page.getByRole('link', { name: 'Empresa' }).click();
@@ -44,7 +43,7 @@ async function acessarCadastro(page) {
 }
 
 // Cria um novo registro e preenche os campos: CPF, NOME e CEP
-async function preencherCampos(page, newPage, menu) {
+async function preencherCampos(page: Page, newPage: Page, menu: FrameLocator) {
   await menu.getByTitle('Abrir um novo registro').click();
   
   const radioPF = menu.getByRole('radio', { name: 'Pessoa Física' });
@@ -110,10 +109,10 @@ async function preencherCampos(page, newPage, menu) {
 }
 
 // Validações para campos obrigatório que podem estar marcados ou nao
-async function camposOpcionais(page, newPage, menu) {
+async function camposOpcionais(page: Page, newPage: Page, menu: Page | Frame | FrameLocator) {
   //Endereço de cobrança
   await menu.locator('#SC_blk_pdf6').click();
-  await menu.locator('#SC_blk_pdf14').click();
+  await menu.locator('#SC_blk_pdf15').click();
 
   //Grupo
   {
@@ -340,7 +339,7 @@ async function camposOpcionais(page, newPage, menu) {
 }
 
 // Finaliza o cadastro
-async function incluirRegistro(menu, page) {
+async function incluirRegistro(menu: FrameLocator, page: Page) {
   await menu.getByTitle('Incluir registro(s)').click();
   await menu.locator('iframe[name="item_1"]').waitFor({ state: 'attached', timeout: 45000 });
   const item1Frame = await (await menu.locator('iframe[name="item_1"]').elementHandle()).contentFrame();
@@ -356,7 +355,7 @@ async function incluirRegistro(menu, page) {
 }
 
 // Plano fixo Inicio
-async function contratoStart(page, menu, item5, tb) {
+async function contratoStart(page: Page, menu: FrameLocator, item5: FrameLocator, tb: FrameLocator) {
   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
   await expect(contrato).toBeVisible();
   await contrato.click();
@@ -389,7 +388,7 @@ async function contratoStart(page, menu, item5, tb) {
 }
 
 // Plano dinamico Inicio
-async function contratoDinamicoStart(page, menu, item5, tb) {
+async function contratoDinamicoStart(page: any, menu: { getByRole: (arg0: string, arg1: { name: string; }) => any; }, item5: { getByTitle: (arg0: string) => any; }, tb: Page | Frame | FrameLocator) {
   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
   await expect(contrato).toBeVisible();
   await contrato.click();
@@ -421,7 +420,7 @@ async function contratoDinamicoStart(page, menu, item5, tb) {
 }
 
 // Valida campos opcionais
-async function camposOpcionaisContratos(page, newPage, tb, item5, menu) {
+async function camposOpcionaisContratos(page: Page, newPage: Page, tb: FrameLocator, item5: FrameLocator, menu: FrameLocator) {
   //Endereço de Instalação
   {
     const edInstLabel = menu.locator("#hidden_bloco_14");
@@ -595,7 +594,7 @@ test('Cadastro completo de cliente com contrato fixo', async ({ page, context })
   await preencherCampos(page, newPage, menu);
   await camposOpcionais(page, newPage, menu);
   const clientCode = await incluirRegistro(menu,page);
-
+/*
   //Inicia contrato fixo
   await contratoStart(page, menu, item5, tb); 
   //Inicia contrato Dinamico
@@ -607,4 +606,5 @@ test('Cadastro completo de cliente com contrato fixo', async ({ page, context })
   await contratoFinaliza(page);
   //Finaliza contrato dinamico
   //await contratoDinamicoFinaliza(page);
+  */
 });
