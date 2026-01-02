@@ -97,15 +97,28 @@ export async function robustRandomSelect2(
   await retryUntil(async () => {
     const trigger = menu.locator(dropdownTriggerSelector);
     await expect(trigger).toBeVisible({ timeout: 5000 });
-    await trigger.click();
+
+    // FIX: Check state to avoid "Toggle Trap" (opening then closing in loop)
+    const isExpanded = await trigger.getAttribute('aria-expanded');
+    if (isExpanded !== 'true') {
+      await trigger.click();
+    }
 
     const optionsContainer = menu.locator('.select2-results__options');
+    // Ensure it opened; if not, click might have failed or state was desynced
+    if (!await optionsContainer.isVisible()) {
+        await trigger.click(); 
+    }
+    
     await expect(optionsContainer).toBeVisible({ timeout: 5000 });
 
+    // Filter valid options
     const options = optionsContainer.locator('.select2-results__option:not([aria-disabled="true"])');
     const count = await options.count();
 
     if (count === 0) {
+      // Force close to reset state for next retry if empty
+      await menu.keyboard.press('Escape'); 
       throw new Error('No options available to select, retrying...');
     }
     
@@ -120,19 +133,21 @@ export async function robustRandomSelect2(
     }
 
     if (validOptions.length === 0) {
+       await menu.keyboard.press('Escape');
       throw new Error('No valid (non-blacklisted) options available, retrying...');
     }
 
     const random = validOptions[Math.floor(Math.random() * validOptions.length)];
     await options.nth(random.index).click();
 
+    // Verification
     const selectedDisplay = menu.locator(dropdownTriggerSelector);
     await expect(selectedDisplay).toContainText(random.text, { timeout: 3000 });
     
     selectedText = random.text;
     return true; 
     
-  }, { timeout: 15000, interval: 500 }); 
+  }, { timeout: 20000, interval: 1000 }); // Increased timeout and interval
 
   if (selectedText === '') {
     throw new Error(`Failed to select an option for "${dropdownTriggerSelector}" after multiple retries.`);

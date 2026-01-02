@@ -47,7 +47,7 @@ async function validacaoAjaxEstoque(page: Page, menu: FrameLocator) {
     await waitForAjax(page);
     await expect(menu.locator('#id_label_retequip_fluxitem')).toBeVisible();
 
-    // Selecionador do fluxo (agora robusto)
+    // Selecionador do fluxo
     const topFluxCtr = menu.locator('[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]');
     await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]', ['padrão']);
     await waitForAjax(page);
@@ -55,9 +55,9 @@ async function validacaoAjaxEstoque(page: Page, menu: FrameLocator) {
     if (isInvalidText(topfluxVlrNovo)) throw new Error(`TopFlux inválido: "${topfluxVlrNovo}"`);
     if (topfluxVlrNovo !== topfluxVlrOri) altered.push({ name: 'topflux', locator: topFluxCtr });
 
-    // Selecionador do fluxo item (agora robusto e simplificado)
+    // Selecionador do fluxo item
     const fluxCtr = menu.locator('[aria-labelledby="select2-id_sc_field_retequip_fluxitem-container"]');
-    await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_fluxitem-container"]', ['padrão']);
+    await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_fluxitem-container"]', ['Selecione']);
     await waitForAjax(page);
     const fluxItemVlrNovo = (await fluxCtr.textContent())?.trim() ?? '';
     if (isInvalidText(fluxItemVlrNovo)) throw new Error(`Fluxo inválido: "${fluxItemVlrNovo}"`);
@@ -68,9 +68,9 @@ async function validacaoAjaxEstoque(page: Page, menu: FrameLocator) {
     await menu.locator('input[name="retequip_atendtipo"][value="T"]').check();
     await waitForAjax(page);
 
-    // Selecionador do Topico (agora robusto)
+    // Selecionador do Topico
     const topFluxCtr = menu.locator('[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]');
-    await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]', ['padrão']);
+    await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]', ['Selecione']);
     await waitForAjax(page);
     const topfluxVlrNovo = (await topFluxCtr.textContent())?.trim() ?? '';
     if (isInvalidText(topfluxVlrNovo)) throw new Error(`TopFlux inválido: "${topfluxVlrNovo}"`);
@@ -84,7 +84,7 @@ async function validacaoAjaxEstoque(page: Page, menu: FrameLocator) {
   if (!designarAtdNew || designarAtdNew === 'N') throw new Error(`DesignarAtd inválido: "${designarAtdNew}"`);
   if (designarAtdNew !== designarAtdOri) altered.push({ name: 'designarAtd', locator: menu.locator('#id_sc_field_retequip_designar') });
 
-  // Designar alvo (agora robusto)
+  // Designar alvo 
   const designarAlvoCtr = menu.locator('[aria-labelledby="select2-id_sc_field_retequip_designaralvo-container"]');
   await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_designaralvo-container"]', ['selecione', 'padrão']);
   await waitForAjax(page);

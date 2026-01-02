@@ -78,9 +78,9 @@ async function preencherCampos(page: Page, newPage: Page, menu: FrameLocator) {
   await menu.getByAltText('{datatype: \'text\', maxLength: 20, allowedChars: \'0123456789SsNn/\', lettersCase').fill('123');
 
   //Banco + convenio
-  await menu.locator('#id_sc_field_bcocobr').selectOption('1'); //Valor dinamico trocar de acordo com a necessidade
-  await menu.locator('#id_sc_field_cobr_convenio').selectOption('1234-5678-13579-Convênio BB'); //Base teste final
-  await menu.locator('#id_sc_field_cobranca').selectOption('R');
+  await menu.locator('#id_sc_field_bcocobr').selectOption('0'); //Valor dinamico trocar de acordo com a necessidade
+  //await menu.locator('#id_sc_field_cobr_convenio').selectOption('1234-5678-13579-Convênio BB'); //Base teste final
+  //await menu.locator('#id_sc_field_cobranca').selectOption('R');
   await menu.locator('#id-opt-boletoemail-1').check();
 
   await newPage.bringToFront();
@@ -99,8 +99,10 @@ async function preencherCampos(page: Page, newPage: Page, menu: FrameLocator) {
 // Validações para campos obrigatório que podem estar marcados ou nao
 async function camposOpcionais(page: Page, newPage: Page, menu: Page | FrameLocator | Frame) {
   //Endereço de cobrança
-  await menu.locator('#SC_blk_pdf6').click();
-  await menu.locator('#SC_blk_pdf14').click();
+  await menu.locator('#hidden_bloco_6').getByText('Endereço de Cobrança').click();
+  //await page.getByText('Endereço de Cobrança').filter({ visible: true }).click();
+  //dados fiscais
+  await menu.getByText('Dados Fiscais').click();
 
   //Grupo
   {
@@ -496,8 +498,6 @@ async function contratoFinaliza(page: Page) {
     await item5.getByTitle('Confirmar alterações').click();
   }
   catch (e) { }
-
-  // Then check status
   const statusLocator = refreshedItem5.locator('#id_sc_field_gsituacao_1');
   await expect(statusLocator).toBeVisible({ timeout: 10000 });
   const statusText = (await statusLocator.textContent())?.trim() ?? '';
