@@ -1,12 +1,12 @@
-import { test, chromium, expect, FrameLocator, Page, Frame } from '@playwright/test';
-import { debugSelectorCounts, randomSelect, randomSelect2, login, waitForAjax} from './lib/utils';
-import { parsePdfBuffer } from './lib/pdfUtils';
+import { test, expect, Locator, Page, FrameLocator} from '@playwright/test';
+import { parsePdfBuffer } from '../lib/pdfUtils';
+import { randomSelect, randomSelect2, login, validateFields, waitForAjax, retryUntil } from '../lib/utils';
 
-/*Para utilizar esse recurso cole o seguinte comando no terminal
-Start-Process "C:\Program Files\Google\Chrome\Application\chrome.exe" -ArgumentList "--remote-debugging-port=9222 --user-data-dir=C:\temp\chrome_debug"
+/* 
+* teste será composto de acessar um cliente gerado pela Cad_cliente.spec.ts e efetuar o faturamento.
+* Posterior ao faturamento validar o boleto, nota e fatura utilizando a lib pdf-parse (npm install pdf-parse)
 */
-
-export async function readPdfFromPage(pageWithPdf: Page) {
+async function readPdfFromPage(pageWithPdf: Page) {
   const bufferData = await pageWithPdf.evaluate(async () => {
     const response = await fetch(window.location.href);
     const buffer = await response.arrayBuffer();
@@ -23,6 +23,13 @@ function normalizeText(text: string | null){
       .replace('R$', '')
       .replace(/\s+/g, ' ')
       .trim();
+}
+
+async function acessarCadastro(page: Page) {
+  await page.getByText('x', { exact: true }).click();
+  await page.locator('img').first().click();
+  await page.getByRole('link', { name: 'Empresa' }).click();
+  await page.getByRole('link', { name: 'Clientes' }).click();
 }
 
 async function armazenarDados(page: Page, menu: FrameLocator){
@@ -72,10 +79,8 @@ async function extrairDadosPDF(menu: FrameLocator, page: Page) {
   };
 }
 
-async function validarDados(dadosContrato: { valorContrato: string, descontoContrato: string }, 
+async function validarDadosBoleto(dadosContrato: { valorContrato: string, descontoContrato: string }, 
                             dadosPdf: { valorPDF: string, descontoPDF: string }) {
-  
-  console.log('--- Iniciando Validação ---');
   
   // Comparação valor
   console.log(`Validando Valor: Contrato [${dadosContrato.valorContrato}] vs PDF [${dadosPdf.valorPDF}]`);
@@ -86,21 +91,32 @@ async function validarDados(dadosContrato: { valorContrato: string, descontoCont
   expect(dadosContrato.descontoContrato).toEqual(dadosPdf.descontoPDF);
 }
 
-test('Run on existing Chrome', async () => {
-    test.setTimeout(30000);  
-    const browser = await chromium.connectOverCDP('http://localhost:9222');
-    const context = browser.contexts()[0];
-    const page = context.pages()[0];
+async function validarDadosFatura(page: Page, menu: FrameLocator){
 
-    const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
-    
-    // 1. Capture Contrato Data
-    const dadosContrato = await armazenarDados(page, menu);
-    console.log('Dados do Contrato Capturados:', dadosContrato);
+}
 
-    // 2. Capture PDF Data
-    const dadosPdf = await extrairDadosPDF(menu, page);
-    console.log('Dados do PDF Capturados:', dadosPdf);
+async function validarDadosNotass(page: Page, menu: FrameLocator){
 
-    await validarDados(dadosContrato, dadosPdf);
+}
+
+
+
+
+
+
+
+
+
+test('Cadastro completo de cliente com contrato fixo', async ({ page, context }) => {
+  // Gera o cache dos itens do inspetor.
+  const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
+  test.setTimeout(80000);
+
+  await login(page);
+
+  // 1. Capture Contrato Data
+  const dadosContrato = await armazenarDados(page, menu);
+  // 2. Capture PDF Data
+  const dadosPdf = await extrairDadosPDF(menu, page);
+  await validarDadosBoleto(dadosContrato, dadosPdf);
 });

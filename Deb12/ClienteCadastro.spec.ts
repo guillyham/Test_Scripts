@@ -51,7 +51,6 @@ async function preencherCampos(page: Page, newPage: Page, menu: FrameLocator) {
     await radioPF.click();
   }
 
-  // Optional sanity check: wait until CPF label becomes visible/updated
   await expect(menu.locator('#id_label_br_cnpj_cnpf')).toContainText('CPF', { timeout: 10000 });
   await menu.getByText('CPF *').waitFor();
 

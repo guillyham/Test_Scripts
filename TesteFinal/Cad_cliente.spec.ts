@@ -333,7 +333,13 @@ async function camposOpcionais(page: Page, newPage: Page, menu: Page | FrameLoca
 async function incluirRegistro(page: Page, menu: FrameLocator) {
   await menu.getByTitle('Incluir registro(s)').click();
   await waitForAjax(page, 2000);
+}
 
+export async function clienteCodigo(page: Page, menu: FrameLocator) {
+  const codigoLocator = menu.locator('#id_sc_field_codigo');
+  await expect(codigoLocator).toBeVisible({ timeout: 10000 });
+  const clienteCodigo = (await codigoLocator.textContent())?.trim() ?? '';
+  console.log(`Código do cliente cadastrado: ${clienteCodigo}`);
 }
 
 // Plano fixo Inicio
@@ -574,6 +580,7 @@ test('Cadastro completo de cliente com contrato fixo', async ({ page, context })
   await preencherCampos(page, newPage, menu);
   await camposOpcionais(page, newPage, menu);
   await incluirRegistro(page, menu);
+  await clienteCodigo(page, menu);
 
   //Inicia contrato fixo
   //await contratoStart(page, menu, item5); 

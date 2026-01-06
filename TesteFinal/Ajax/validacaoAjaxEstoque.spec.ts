@@ -97,13 +97,13 @@ async function validacaoAjaxEstoque(page: Page, menu: FrameLocator) {
     await validateFields(locator);
   }
   await menu.locator('#sc_b_upd_t').click();
-  await waitForAjax(page); // Espera o salvamento concluir
+  await waitForAjax(page);
 }
 
 test('Testar Ajax Estoque', async ({ page }) => {
   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
 
-  test.setTimeout(60_000); // Aumentar um pouco o timeout geral para acomodar os retries
+  test.setTimeout(60_000);
 
   await login(page);
 
