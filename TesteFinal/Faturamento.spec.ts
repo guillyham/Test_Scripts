@@ -1,11 +1,13 @@
-import { test, expect, Locator, Page, FrameLocator} from '@playwright/test';
+import { test, expect, Page, FrameLocator } from '@playwright/test';
 import { parsePdfBuffer } from '../lib/pdfUtils';
-import { randomSelect, randomSelect2, login, validateFields, waitForAjax, retryUntil } from '../lib/utils';
+import { randomSelect, randomSelect2, login, waitForAjax} from '../lib/utils';
+import fs from 'fs';
 
 /* 
 * teste será composto de acessar um cliente gerado pela Cad_cliente.spec.ts e efetuar o faturamento.
 * Posterior ao faturamento validar o boleto, nota e fatura utilizando a lib pdf-parse (npm install pdf-parse)
 */
+
 async function readPdfFromPage(pageWithPdf: Page) {
   const bufferData = await pageWithPdf.evaluate(async () => {
     const response = await fetch(window.location.href);
@@ -17,34 +19,129 @@ async function readPdfFromPage(pageWithPdf: Page) {
   return parsePdfBuffer({ buffer });
 }
 
-function normalizeText(text: string | null){
+function normalizeText(text: string | null) {
   if (!text) return '';
-    return text
-      .replace('R$', '')
-      .replace(/\s+/g, ' ')
-      .trim();
+  return text
+    .replace('R$', '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-async function acessarCadastro(page: Page) {
+async function acessarCadastro(page: Page, menu: FrameLocator) {
   await page.getByText('x', { exact: true }).click();
   await page.locator('img').first().click();
   await page.getByRole('link', { name: 'Empresa' }).click();
   await page.getByRole('link', { name: 'Clientes' }).click();
+  await page.getByRole('link', { name: 'Cadastro' }).click();
+
+  // Preenche o campo de busca com o código do cliente que retorna do json criado no cadastro de cliente
+  const { clienteCodigo } = JSON.parse(fs.readFileSync('customerContext.json', 'utf-8'));
+  await menu.locator('#SC_fast_search_top').fill(clienteCodigo);
+  await waitForAjax(page);
+  await page.keyboard.press('Enter');
 }
 
-async function armazenarDados(page: Page, menu: FrameLocator){
-  const documentoDados =
-  {
+async function faturarCliente(page: Page, menu: FrameLocator) {
+  const { clienteCodigo } = JSON.parse(fs.readFileSync('customerContext.json', 'utf-8')
+  );
+  const iframe = page
+    .frameLocator('iframe[name="app_menu_iframe"]')
+    .frameLocator('iframe[name^="TB_iframeContent"]');
+
+  const rowSelector = () =>
+    menu
+      .locator('tr[id^="SC_ancor"]')
+      .filter({
+        has: menu.locator(
+          'td.css_codigo_grid_line',
+          { hasText: new RegExp(`^\\s*${clienteCodigo}\\s*$`) }
+        )
+      });
+  await rowSelector().locator('a.css_btnfaturamento_grid_line').first().click();
+  await waitForAjax(page);    
+
+  await iframe.getByText('Gera Faturamento').isVisible();
+  const errorLabel = iframe.locator('#id_ajax_label_avisofaturamentoexistente');
+  const monthSelector = '#id_sc_field_mes';
+  const yearSelector = '#id_sc_field_ano';
+  const excludeText = ['Escolha o Mês', 'Escolha o Ano'];
+
+  await randomSelect(iframe, monthSelector, excludeText);
+  await waitForAjax(page);
+  await randomSelect(iframe, yearSelector, excludeText);
+
+  try {
+    await waitForAjax(page);
+    await errorLabel.waitFor({ state: 'visible', timeout: 1500 });
+  } catch (e) { }
+
+  let tentativas = 0;
+  const maxTentativas = 10;
+  while (await errorLabel.isVisible() && tentativas < maxTentativas) {
+    await randomSelect(iframe, monthSelector, excludeText);
+    await randomSelect(iframe, yearSelector, excludeText);
+    await waitForAjax(page);
+    await page.waitForTimeout(1000);
+    tentativas++;
+  }
+
+  await randomSelect2(iframe, '#select2-id_sc_field_conta-container', ['Escolha Conta Corrente', '55555-RECEBER VINDI']);
+  await waitForAjax(page);
+
+  await randomSelect2(iframe, '#select2-id_sc_field_historico-container', ['Escolha Histórico', 'HISTÓRICO INATIVO']);
+  await waitForAjax(page);
+
+  const dialogPromise = page.waitForEvent('dialog');
+
+  await iframe.locator('#sc_Executar_bot').click();
+  await page.keyboard.press('Enter');
+
+  const dialog = await dialogPromise;
+
+  const message = dialog.message();
+  //console.log(message);
+
+  expect(message).toContain('Final de Processamento');
+
+  await dialog.accept();
+  //teste falhou se nenhum documento foi incluído
+  expect(message).not.toContain('Incluídos 0 documentos');
+
+  await iframe.locator('#Bsair_b').click()
+}
+
+async function armazenarDados(page: Page, menu: FrameLocator) {
+  const { clienteCodigo } = JSON.parse(fs.readFileSync('customerContext.json', 'utf-8'));
+
+  const rowSelector = () =>
+    menu
+      .locator('tr[id^="SC_ancor"]')
+      .filter({
+        has: menu.locator(
+          'td.css_codigo_grid_line',
+          { hasText: new RegExp(`^\\s*${clienteCodigo}\\s*$`) }
+        )
+      });
+
+  // ===== CONTRATOS =====
+  await rowSelector().locator('a.css_btncontratos_grid_line').first().click();
+  await waitForAjax(page);
+
+  const contratoDados = {
     valorContrato: normalizeText(await menu.locator('#id_sc_field_totalp_1').textContent()),
     descontoContrato: normalizeText(await menu.locator('#id_sc_field_desconto_1').textContent()),
   };
-
-  //sai dos contratos
   await menu.locator('#sc_Voltar_top').click();
   await waitForAjax(page);
-  //acessa posição financeira
-  await menu.locator('#id_sc_field_btnfinanceiro_2').click();
-  return documentoDados;
+
+  // ===== POSIÇÃO FINANCEIRA =====
+  await rowSelector().locator('a.css_btnfinanceiro_grid_line').first().click();
+  await waitForAjax(page);
+
+  const movimentoDados = {
+    vencimentoDocumento: await menu.locator('#id_sc_field_movimentodata_1').textContent(),
+  };
+  return { contratoDados, movimentoDados };
 }
 
 async function extrairDadosPDF(menu: FrameLocator, page: Page) {
@@ -57,7 +154,6 @@ async function extrairDadosPDF(menu: FrameLocator, page: Page) {
   await newPage.bringToFront();
   const msgVencido = newPage.getByText('Imprimir boleto vencido atualizado?');
   if (await msgVencido.isVisible()) {
-    console.log('Atualizando boleto vencido...');
     await newPage.locator('#sub_form_b').click();
     await newPage.waitForLoadState('networkidle');
   }
@@ -65,58 +161,57 @@ async function extrairDadosPDF(menu: FrameLocator, page: Page) {
   await newPage.waitForLoadState('networkidle');
   const pdfRawData = await readPdfFromPage(newPage);
   const pdfText = pdfRawData.text;
-  console.log('--- Texto extraído do PDF ---');
-  console.log(pdfText);
+  //console.log('Texto extraído do PDF:', pdfText);
+  await newPage.close();
 
   // --- REGEX  ---
   const valorMatch = pdfText.match(/Valor do documento\s+([\d.,]+)/);
   const descontoMatch = pdfText.match(/Desconto \/ Abatimentos\s+([\d.,]+)/);
+  const vencMatch = pdfText.match(/\d{2}\/\d{2}\/\d{4}/);
 
-  // Retorna o objeto
   return {
     valorPDF: valorMatch ? normalizeText(valorMatch[1]) : '0,00',
-    descontoPDF: descontoMatch ? normalizeText(descontoMatch[1]) : '0,00'
+    descontoPDF: descontoMatch ? normalizeText(descontoMatch[1]) : '0,00',
+    vencimentoPDF: vencMatch ? normalizeText(vencMatch[0]) : '00/00/0000',
   };
 }
 
-async function validarDadosBoleto(dadosContrato: { valorContrato: string, descontoContrato: string }, 
-                            dadosPdf: { valorPDF: string, descontoPDF: string }) {
-  
+async function validarDados(clienteDados: { valorContrato: string, descontoContrato: string, vencimentoContrato: string },
+  dadosPdf: { valorPDF: string, descontoPDF: string, vencimentoPDF: string }) {
+
   // Comparação valor
-  console.log(`Validando Valor: Contrato [${dadosContrato.valorContrato}] vs PDF [${dadosPdf.valorPDF}]`);
-  expect(dadosContrato.valorContrato).toEqual(dadosPdf.valorPDF);
+  //console.log(`Validando Valor: Contrato [${clienteDados.valorContrato}] vs PDF [${dadosPdf.valorPDF}]`);
+  expect(clienteDados.valorContrato).toEqual(dadosPdf.valorPDF);
 
   // Comparação desconto
-  console.log(`Validando Desconto: Contrato [${dadosContrato.descontoContrato}] vs PDF [${dadosPdf.descontoPDF}]`);
-  expect(dadosContrato.descontoContrato).toEqual(dadosPdf.descontoPDF);
+  //console.log(`Validando Desconto: Contrato [${clienteDados.descontoContrato}] vs PDF [${dadosPdf.descontoPDF}]`);
+  expect(clienteDados.descontoContrato).toEqual(dadosPdf.descontoPDF);
+
+  // Comparação vencimento
+  //console.log(`Validando Vencimento: Contrato [${clienteDados.vencimentoContrato}] vs PDF [${dadosPdf.vencimentoPDF}]`);
+  expect(clienteDados.vencimentoContrato).toEqual(dadosPdf.vencimentoPDF);
 }
 
-async function validarDadosFatura(page: Page, menu: FrameLocator){
-
-}
-
-async function validarDadosNotass(page: Page, menu: FrameLocator){
-
-}
-
-
-
-
-
-
-
-
-
-test('Cadastro completo de cliente com contrato fixo', async ({ page, context }) => {
+test('Faturamento', async ({ page, context }) => {
   // Gera o cache dos itens do inspetor.
   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
   test.setTimeout(80000);
 
   await login(page);
+  await acessarCadastro(page, menu);
+  await faturarCliente(page, menu);
 
-  // 1. Capture Contrato Data
-  const dadosContrato = await armazenarDados(page, menu);
-  // 2. Capture PDF Data
+  const clienteDados = await armazenarDados(page, menu);
+  //console.log('Dados do Contrato Capturados:', clienteDados);
+
   const dadosPdf = await extrairDadosPDF(menu, page);
-  await validarDadosBoleto(dadosContrato, dadosPdf);
+  //console.log('Dados do PDF Capturados:', dadosPdf);
+
+  await validarDados(
+    {
+      valorContrato: clienteDados.contratoDados.valorContrato,
+      descontoContrato: clienteDados.contratoDados.descontoContrato,
+      vencimentoContrato: clienteDados.movimentoDados.vencimentoDocumento ?? ""
+    },
+    dadosPdf);
 });

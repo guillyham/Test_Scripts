@@ -1,5 +1,6 @@
 import { test, expect, Locator, Page, FrameLocator, Frame } from '@playwright/test';
 import { randomSelect, randomSelect2, login, validateFields, waitForAjax } from '../lib/utils';
+import fs from 'fs';
 
 /*
 Fluxo do teste:
@@ -78,9 +79,9 @@ async function preencherCampos(page: Page, newPage: Page, menu: FrameLocator) {
   await menu.getByAltText('{datatype: \'text\', maxLength: 20, allowedChars: \'0123456789SsNn/\', lettersCase').fill('123');
 
   //Banco + convenio
-  await menu.locator('#id_sc_field_bcocobr').selectOption('0'); //Valor dinamico trocar de acordo com a necessidade
-  //await menu.locator('#id_sc_field_cobr_convenio').selectOption('1234-5678-13579-Convênio BB'); //Base teste final
-  //await menu.locator('#id_sc_field_cobranca').selectOption('R');
+  await menu.locator('#id_sc_field_bcocobr').selectOption('104-CEF');
+  await menu.locator('#id_sc_field_cobr_convenio').selectOption('13579-13579-13579-CEF'); //Base teste final
+  await menu.locator('#id_sc_field_cobranca').selectOption('R');
   await menu.locator('#id-opt-boletoemail-1').check();
 
   await newPage.bringToFront();
@@ -332,14 +333,24 @@ async function camposOpcionais(page: Page, newPage: Page, menu: Page | FrameLoca
 // Finaliza o cadastro
 async function incluirRegistro(page: Page, menu: FrameLocator) {
   await menu.getByTitle('Incluir registro(s)').click();
-  await waitForAjax(page, 2000);
+  await waitForAjax(page, 8000);
 }
 
-export async function clienteCodigo(page: Page, menu: FrameLocator) {
-  const codigoLocator = menu.locator('#id_sc_field_codigo');
+async function clienteCodigo(page: Page, menu: FrameLocator) {
+  const nestedFrame = menu.frameLocator('iframe[name="item_1"]');
+  const codigoLocator = nestedFrame.locator('#id_read_on_codigo');
   await expect(codigoLocator).toBeVisible({ timeout: 10000 });
   const clienteCodigo = (await codigoLocator.textContent())?.trim() ?? '';
   console.log(`Código do cliente cadastrado: ${clienteCodigo}`);
+  
+  //Cria um arquivo JSON, se ja existir sobrescreve
+  //Caso furutamente seja necessário compartilhar mais dados, basta adicionar mais campos aqui
+  const sharedData = {
+    clienteCodigo: clienteCodigo
+  };
+
+  // Escreve os dados no arquivo customerContext.json
+  fs.writeFileSync('customerContext.json', JSON.stringify(sharedData));
 }
 
 // Plano fixo Inicio
@@ -566,7 +577,7 @@ test('Cadastro completo de cliente com contrato fixo', async ({ page, context })
   const item5 = menu.frameLocator('iframe[name="item_5"]');
   const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
 
-  test.setTimeout(70000);
+  test.setTimeout(80000);
 
   await login(page);
 

@@ -26,6 +26,7 @@ export default defineConfig({
     { name: '04-Cad-Cliente',   testMatch: ['**/Cad_cliente.spec.ts'], use: { headless: false, launchOptions: { slowMo: 200 } } },
     { name: '05-Cad-Planos',    testMatch: ['**/Cad_Planos.spec.ts']},
     { name: '06-Atend_novo',    testMatch: ['**/Atend_novo.spec.ts']},
+    { name: '07-Faturamento',   testMatch: ['**/Faturamento.spec.ts']},
 
     // teste da base: deb12
     { name: '01-Cad-Cliente-deb12',  testMatch: ['**/Deb12/ClienteCadastro.spec.ts'], use: { headless: false, launchOptions: { slowMo: 200 } } },
