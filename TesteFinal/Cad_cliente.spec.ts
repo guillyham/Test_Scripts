@@ -101,9 +101,10 @@ async function preencherCampos(page: Page, newPage: Page, menu: FrameLocator) {
 async function camposOpcionais(page: Page, newPage: Page, menu: Page | FrameLocator | Frame) {
   //Endereço de cobrança
   await menu.locator('#hidden_bloco_6').getByText('Endereço de Cobrança').click();
-  //await page.getByText('Endereço de Cobrança').filter({ visible: true }).click();
+
   //dados fiscais
   await menu.getByText('Dados Fiscais').click();
+  await randomSelect(menu, '#id_sc_field_nfgeracao', ['PAG'])
 
   //Grupo
   {
@@ -333,7 +334,7 @@ async function camposOpcionais(page: Page, newPage: Page, menu: Page | FrameLoca
 // Finaliza o cadastro
 async function incluirRegistro(page: Page, menu: FrameLocator) {
   await menu.getByTitle('Incluir registro(s)').click();
-  await waitForAjax(page, 8000);
+  await waitForAjax(page, 5000);
 }
 
 async function clienteCodigo(page: Page, menu: FrameLocator) {
@@ -354,7 +355,8 @@ async function clienteCodigo(page: Page, menu: FrameLocator) {
 }
 
 // Plano fixo Inicio
-async function contratoStart(menu: FrameLocator, item5: FrameLocator, tb: FrameLocator) {
+async function contratoStart(page: Page, menu: FrameLocator, item5: FrameLocator, tb: FrameLocator) {
+  await waitForAjax(page);
   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
   await expect(contrato).toBeVisible();
   await contrato.click();
@@ -373,7 +375,7 @@ async function contratoStart(menu: FrameLocator, item5: FrameLocator, tb: FrameL
   const searchInput = tb.locator('input[type="search"]');
   await searchInput.waitFor({ state: 'visible' });
 
-  const optionText = '4-Apenas Boleto (ativo)'; //Inserir o plano aqui
+  const optionText = '1001047-NFcom'; //Inserir o plano aqui
   await searchInput.fill(optionText);
   const options = tb.locator('.select2-results__option', {
     hasText: optionText
@@ -422,7 +424,7 @@ async function contratoDinamicoStart(page: Page, menu: FrameLocator, item5: Fram
 async function camposOpcionaisContratos(page: Page, newPage: Page, menu: FrameLocator, tb: FrameLocator) {
   //Endereço de Instalação
   {
-    const edInstLabel = tb.locator('#hidden_bloco_14').getByText('Endereço de Instalação');
+    const edInstLabel = tb.locator('#div_hidden_bloco_14').getByText('Endereço de Instalação');
     await expect(edInstLabel).toBeVisible();
     const edInst = (await edInstLabel.textContent())?.trim() ?? '';
     if (edInst && edInst.includes("*")) {
@@ -519,6 +521,7 @@ async function contratoFinaliza(page: Page) {
   await expect(statusLocator).toBeVisible({ timeout: 10000 });
   const statusText = (await statusLocator.textContent())?.trim() ?? '';
   expect(statusText).toBe('Ativo');
+
 }
 
 // Plano Dinamico finalização
@@ -569,7 +572,6 @@ async function contratoDinamicoFinaliza(page: Page) {
   expect(statusText).toBe('Ativo');
 }
 
-
 // Fluxo principal do teste
 test('Cadastro completo de cliente com contrato fixo', async ({ page, context }) => {
   // Gera o cache dos itens do inspetor.
@@ -594,14 +596,14 @@ test('Cadastro completo de cliente com contrato fixo', async ({ page, context })
   await clienteCodigo(page, menu);
 
   //Inicia contrato fixo
-  //await contratoStart(page, menu, item5); 
+  await contratoStart(page, menu, item5, tb); 
   //Inicia contrato Dinamico
-  await contratoDinamicoStart(page, menu, item5, tb);
+  //await contratoDinamicoStart(page, menu, item5, tb);
 
   await camposOpcionaisContratos(page, newPage, menu, tb);
 
   //Finaliza contrato 
-  //await contratoFinaliza(page);
+  await contratoFinaliza(page);
   //Finaliza contrato dinamico
-  await contratoDinamicoFinaliza(page);
+  //await contratoDinamicoFinaliza(page);
 });

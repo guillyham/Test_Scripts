@@ -20,11 +20,10 @@ async function readPdfFromPage(pageWithPdf: Page) {
 }
 
 function normalizeText(text: string | null) {
-  if (!text) return '';
-  return text
-    .replace('R$', '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  if (!text) return '0';
+  // Remove R$, remove spaces, remove dots (thousands), replace comma with dot
+  const clean = text.replace('R$', '').replace(/\s+/g, '').replace(/\./g, '').replace(',', '.');
+  return clean.trim();
 }
 
 async function acessarCadastro(page: Page, menu: FrameLocator) {
@@ -48,6 +47,9 @@ async function faturarCliente(page: Page, menu: FrameLocator) {
     .frameLocator('iframe[name="app_menu_iframe"]')
     .frameLocator('iframe[name^="TB_iframeContent"]');
 
+  const mesSelector = '#id_sc_field_mes';
+  const yearSelector = '#id_sc_field_ano';
+  
   const rowSelector = () =>
     menu
       .locator('tr[id^="SC_ancor"]')
@@ -58,38 +60,27 @@ async function faturarCliente(page: Page, menu: FrameLocator) {
         )
       });
   await rowSelector().locator('a.css_btnfaturamento_grid_line').first().click();
-  await waitForAjax(page);    
-
-  await iframe.getByText('Gera Faturamento').isVisible();
-  const errorLabel = iframe.locator('#id_ajax_label_avisofaturamentoexistente');
-  const monthSelector = '#id_sc_field_mes';
-  const yearSelector = '#id_sc_field_ano';
-  const excludeText = ['Escolha o Mês', 'Escolha o Ano'];
-
-  await randomSelect(iframe, monthSelector, excludeText);
-  await waitForAjax(page);
-  await randomSelect(iframe, yearSelector, excludeText);
-
-  try {
-    await waitForAjax(page);
-    await errorLabel.waitFor({ state: 'visible', timeout: 1500 });
-  } catch (e) { }
-
-  let tentativas = 0;
-  const maxTentativas = 10;
-  while (await errorLabel.isVisible() && tentativas < maxTentativas) {
-    await randomSelect(iframe, monthSelector, excludeText);
-    await randomSelect(iframe, yearSelector, excludeText);
-    await waitForAjax(page);
-    await page.waitForTimeout(1000);
-    tentativas++;
+  const meses = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];  
+  let success = false;
+  for (const mes of meses) {
+      //console.log(`tentando faturar o mes: ${mes}`);
+      await iframe.locator(yearSelector).selectOption({ label: '2026' }); 
+      await iframe.locator(mesSelector).selectOption({ value: mes }); 
+      await waitForAjax(page);
+      
+      const errorLabel = iframe.locator('#id_ajax_label_avisofaturamentoexistente');
+      if (await errorLabel.isVisible()) {
+          //console.log(`mes ${mes} já está faturado. Próxima tentativa.`);
+          continue;
+      }
+      success = true;
+      break; 
   }
 
   await randomSelect2(iframe, '#select2-id_sc_field_conta-container', ['Escolha Conta Corrente', '55555-RECEBER VINDI']);
   await waitForAjax(page);
 
   await randomSelect2(iframe, '#select2-id_sc_field_historico-container', ['Escolha Histórico', 'HISTÓRICO INATIVO']);
-  await waitForAjax(page);
 
   const dialogPromise = page.waitForEvent('dialog');
 
@@ -140,6 +131,8 @@ async function armazenarDados(page: Page, menu: FrameLocator) {
 
   const movimentoDados = {
     vencimentoDocumento: await menu.locator('#id_sc_field_movimentodata_1').textContent(),
+    duplicataFinanceiro: await menu.locator('#id_sc_field_movimentodocumento_1').textContent(),
+
   };
   return { contratoDados, movimentoDados };
 }
@@ -176,12 +169,13 @@ async function extrairDadosPDF(menu: FrameLocator, page: Page) {
   };
 }
 
-async function validarDados(clienteDados: { valorContrato: string, descontoContrato: string, vencimentoContrato: string },
+async function validarDadosFinanceiros(page: Page, menu: FrameLocator,
+  clienteDados: { valorContrato: string, descontoContrato: string, vencimentoContrato: string},
   dadosPdf: { valorPDF: string, descontoPDF: string, vencimentoPDF: string }) {
 
   // Comparação valor
   //console.log(`Validando Valor: Contrato [${clienteDados.valorContrato}] vs PDF [${dadosPdf.valorPDF}]`);
-  expect(clienteDados.valorContrato).toEqual(dadosPdf.valorPDF);
+  expect(parseFloat(clienteDados.valorContrato) - parseFloat(clienteDados.descontoContrato)).toEqual(parseFloat(dadosPdf.valorPDF));
 
   // Comparação desconto
   //console.log(`Validando Desconto: Contrato [${clienteDados.descontoContrato}] vs PDF [${dadosPdf.descontoPDF}]`);
@@ -192,10 +186,62 @@ async function validarDados(clienteDados: { valorContrato: string, descontoContr
   expect(clienteDados.vencimentoContrato).toEqual(dadosPdf.vencimentoPDF);
 }
 
-test('Faturamento', async ({ page, context }) => {
+async function validarDadosFiscais(page: Page, menu: FrameLocator,
+  clienteDados: { valorContrato: string, descontoContrato: string, duplicataFinanceiro: string }) {
+  const { clienteCodigo } = JSON.parse(fs.readFileSync('customerContext.json', 'utf-8')
+  );
+  await menu.locator('#sc_Voltar_top').click();
+
+  const rowSelector = () =>
+    menu
+      .locator('tr[id^="SC_ancor"]')
+      .filter({
+        has: menu.locator(
+          'td.css_codigo_grid_line',
+          { hasText: new RegExp(`^\\s*${clienteCodigo}\\s*$`) }
+        )
+      });
+  await rowSelector().locator('a.css_btnfiscal_grid_line').first().click();
+  {
+    const rowSelector = () =>
+      menu
+        .locator('tr[id^="SC_ancor"]')
+        .filter({
+          has: menu.locator(
+            'td.css_duplicatas_grid_line',
+            { hasText: new RegExp(`^\\s*${clienteDados.duplicataFinanceiro}\\s*$`) }
+          )
+        });
+    await rowSelector().locator('a.css_btnitens_grid_line').first().click();
+    await waitForAjax(page, 200);
+
+    const rows = menu.locator('tr[id^="SC_ancor"]');
+    const itemsData = await Promise.all(
+      (await rows.all()).map(async (row) => {
+        const vlrNotaText = await row.locator('[id^="id_sc_field_vlrtotal_"]').textContent();
+        const descontoText = await row.locator('[id^="id_sc_field_desconto_"]').textContent();
+        const vlrNota = parseFloat(normalizeText(vlrNotaText || '0'));
+        const desconto = parseFloat(normalizeText(descontoText || '0'));
+        return {
+          vlrNota,
+          desconto,
+          liquido: vlrNota - desconto
+        };
+      })
+    );
+
+    //console.log('Itens extraídos:', itemsData);
+    const totalCalculado = itemsData.reduce((acc, item) => acc + item.liquido, 0);
+    //console.log('Total Geral Calculado:', totalCalculado);
+    expect(parseFloat(clienteDados.valorContrato)).toBeCloseTo(totalCalculado, 2);
+
+  }
+}
+
+test('Faturamento', async ({ page }) => {
   // Gera o cache dos itens do inspetor.
   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
-  test.setTimeout(80000);
+  test.setTimeout(10000);
 
   await login(page);
   await acessarCadastro(page, menu);
@@ -207,11 +253,18 @@ test('Faturamento', async ({ page, context }) => {
   const dadosPdf = await extrairDadosPDF(menu, page);
   //console.log('Dados do PDF Capturados:', dadosPdf);
 
-  await validarDados(
+  await validarDadosFinanceiros(page, menu,
     {
       valorContrato: clienteDados.contratoDados.valorContrato,
       descontoContrato: clienteDados.contratoDados.descontoContrato,
-      vencimentoContrato: clienteDados.movimentoDados.vencimentoDocumento ?? ""
+      vencimentoContrato: clienteDados.movimentoDados.vencimentoDocumento ?? "",
     },
     dadosPdf);
+
+  await validarDadosFiscais(page, menu,
+    {
+      valorContrato: clienteDados.contratoDados.valorContrato,
+      descontoContrato: clienteDados.contratoDados.descontoContrato,
+      duplicataFinanceiro: clienteDados.movimentoDados.duplicataFinanceiro ?? ""
+    });
 });
