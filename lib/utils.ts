@@ -312,3 +312,10 @@ export async function debugSelectorCounts(page: Page, selector: string) {
     console.log(`frame[${label}] '${selector}' = ${count}`);
   }
 }
+
+export function normalizeText(text: string | null) {
+  if (!text) return '0';
+  // Remove R$, remove spaces, remove dots (thousands), replace comma with dot
+  const clean = text.replace('R$', '').replace(/\s+/g, '').replace(/\./g, '').replace(',', '.');
+  return clean.trim();
+}

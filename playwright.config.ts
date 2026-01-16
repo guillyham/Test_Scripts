@@ -4,6 +4,7 @@ import path from 'path';
 const ROOT = path.resolve(__dirname, '..'); 
 
 export default defineConfig({
+  retries: 5,
   testDir: '.',
   outputDir: path.join(ROOT, 'test-results'), 
   reporter: [

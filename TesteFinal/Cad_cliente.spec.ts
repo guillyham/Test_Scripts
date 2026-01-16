@@ -355,7 +355,7 @@ async function clienteCodigo(page: Page, menu: FrameLocator) {
 }
 
 // Plano fixo Inicio
-async function contratoStart(page: Page, menu: FrameLocator, item5: FrameLocator, tb: FrameLocator) {
+async function contratoFiscalStart(page: Page, menu: FrameLocator, item5: FrameLocator, tb: FrameLocator) {
   await waitForAjax(page);
   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
   await expect(contrato).toBeVisible();
@@ -388,8 +388,9 @@ async function contratoStart(page: Page, menu: FrameLocator, item5: FrameLocator
   await tb.locator('#id_sc_field_inicio').fill('14/05/2020');
 }
 
-// Plano dinamico Inicio
-async function contratoDinamicoStart(page: Page, menu: FrameLocator, item5: FrameLocator, tb: FrameLocator) {
+// Plano fixo Inicio
+async function contratoFaturaStart(page: Page, menu: FrameLocator, item5: FrameLocator, tb: FrameLocator) {
+  await waitForAjax(page);
   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
   await expect(contrato).toBeVisible();
   await contrato.click();
@@ -408,16 +409,39 @@ async function contratoDinamicoStart(page: Page, menu: FrameLocator, item5: Fram
   const searchInput = tb.locator('input[type="search"]');
   await searchInput.waitFor({ state: 'visible' });
 
-  const realTrigger = tb.locator('#select2-id_sc_field_plano-container');
-  await expect(realTrigger).toBeVisible();
-  await realTrigger.click();
+  const optionText = '1001023-Plano Multi Empresa'; //Inserir o plano aqui
+  await searchInput.fill(optionText);
+  const options = tb.locator('.select2-results__option', {
+    hasText: optionText
+  });
 
-  const selectedValue = await randomSelect2(tb, '#select2-id_sc_field_plano-container', ['padrão']);
-  const displayed = await tb.locator('#select2-id_sc_field_plano-container').textContent();
-  expect(displayed?.trim()).toBe(selectedValue);
+  await expect(options.first()).toBeVisible();
+  await options.first().click();
 
   await tb.locator('#id_sc_field_assinatura').fill('14/05/2020');
   await tb.locator('#id_sc_field_inicio').fill('14/05/2020');
+}
+
+// Plano finalização
+async function contratoFinaliza(page: Page) {
+  // Carrega os frames
+  const { item5, tb } = getFrames(page);
+  await item5.locator('iframe[name^="TB_iframeContent"]').waitFor({ state: 'attached', timeout: 10000 });
+
+  await expect(tb.locator('#sc_Confirmar_bot')).toBeVisible({ timeout: 10000 });
+  await tb.locator('#sc_Confirmar_bot').click();
+
+  await expect.soft(tb.getByText('Confirma inclusão do(s)')).toBeVisible();
+  if (await tb.getByText('Confirma inclusão do(s)').isVisible()) {
+    await page.keyboard.press('Enter');
+  }
+
+  await tb.getByText('Contrato incluído com sucesso!').waitFor({ state: 'visible' });
+  await page.keyboard.press('Enter');
+
+  const contratoSair = tb.getByTitle('Sair da página');
+  await expect(contratoSair).toBeVisible();
+  await contratoSair.click();  
 }
 
 // Valida campos opcionais
@@ -476,54 +500,37 @@ async function camposOpcionaisContratos(page: Page, newPage: Page, menu: FrameLo
   }
 }
 
-// Plano finalização
-async function contratoFinaliza(page: Page) {
-  // Carrega os frames
-  const { menu, item5, tb } = getFrames(page);
-  await item5.locator('iframe[name^="TB_iframeContent"]').waitFor({ state: 'attached', timeout: 10000 });
-
-  await expect(tb.locator('#sc_Confirmar_bot')).toBeVisible({ timeout: 10000 });
-  await tb.locator('#sc_Confirmar_bot').click();
-
-  await expect.soft(tb.getByText('Confirma inclusão do(s)')).toBeVisible();
-  if (await tb.getByText('Confirma inclusão do(s)').isVisible()) {
-    await page.keyboard.press('Enter');
-  }
-
-  await tb.getByText('Contrato incluído com sucesso!').waitFor({ state: 'visible' });
-  await page.keyboard.press('Enter');
-
-  const contratoSair = tb.getByTitle('Sair da página');
-  await expect(contratoSair).toBeVisible();
-  await contratoSair.click();
-
-  // Recarrega os frames novamente
-  const { menu: refreshedMenu, item5: refreshedItem5 } = getFrames(page);
-
-  const contrato = refreshedMenu.getByRole('menuitem', { name: 'Contratos' });
+// Plano dinamico Inicio
+async function contratoDinamicoStart(page: Page, menu: FrameLocator, item5: FrameLocator, tb: FrameLocator) {
+  const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
   await expect(contrato).toBeVisible();
+  await contrato.click();
 
-  try {
-    const ativarBtn = item5.locator('#id_sc_field_btnativar_1');
-    await ativarBtn.waitFor({ state: 'visible', timeout: 3000 });
+  const Newcontrato = item5.getByTitle('Adicionar Novo Contrato para');
+  await expect(Newcontrato).toBeVisible();
+  await Newcontrato.click();
 
-    await ativarBtn.click();
-    await item5.getByText('Ativação de Contratos').waitFor();
+  await tb.locator('#id_sc_field_incluir').click({ force: true });
+  await tb.locator('#id_sc_field_incluir').selectOption('P');
 
-    page.once('dialog', async dialog => {
-      await dialog.accept();
-    });
+  const planos = tb.getByText('Plano *');
+  await expect(planos).toBeVisible();
 
-    await item5.getByTitle('Confirmar alterações').click();
-  }
-  catch (e) { }
-  const statusLocator = refreshedItem5.locator('#id_sc_field_gsituacao_1');
-  await expect(statusLocator).toBeVisible({ timeout: 10000 });
-  const statusText = (await statusLocator.textContent())?.trim() ?? '';
-  expect(statusText).toBe('Ativo');
+  await tb.getByRole('combobox', { name: '(Escolha o plano)' }).click();
+  const searchInput = tb.locator('input[type="search"]');
+  await searchInput.waitFor({ state: 'visible' });
 
+  const realTrigger = tb.locator('#select2-id_sc_field_plano-container');
+  await expect(realTrigger).toBeVisible();
+  await realTrigger.click();
+
+  const selectedValue = await randomSelect2(tb, '#select2-id_sc_field_plano-container', ['padrão']);
+  const displayed = await tb.locator('#select2-id_sc_field_plano-container').textContent();
+  expect(displayed?.trim()).toBe(selectedValue);
+
+  await tb.locator('#id_sc_field_assinatura').fill('14/05/2020');
+  await tb.locator('#id_sc_field_inicio').fill('14/05/2020');
 }
-
 // Plano Dinamico finalização
 async function contratoDinamicoFinaliza(page: Page) {
   // Carrega os frames
@@ -572,6 +579,24 @@ async function contratoDinamicoFinaliza(page: Page) {
   expect(statusText).toBe('Ativo');
 }
 
+async function contratoAtiva(page: Page){  
+  let { menu, item5 } = getFrames(page);
+  const allBtns = '[id^="id_sc_field_btnativar_"]';
+  while (true) {
+    const btn = item5.locator(allBtns).first();
+    if (await btn.count() === 0) {
+      break;
+    }
+
+    if (!(await btn.isVisible())) {
+      break;
+    }
+    await btn.click();
+
+    await item5.getByTitle('Confirmar alterações').click();
+    await waitForAjax(page);
+  }
+}
 // Fluxo principal do teste
 test('Cadastro completo de cliente com contrato fixo', async ({ page, context }) => {
   // Gera o cache dos itens do inspetor.
@@ -579,7 +604,7 @@ test('Cadastro completo de cliente com contrato fixo', async ({ page, context })
   const item5 = menu.frameLocator('iframe[name="item_5"]');
   const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
 
-  test.setTimeout(80000);
+  test.setTimeout(100000);
 
   await login(page);
 
@@ -595,15 +620,21 @@ test('Cadastro completo de cliente com contrato fixo', async ({ page, context })
   await incluirRegistro(page, menu);
   await clienteCodigo(page, menu);
 
-  //Inicia contrato fixo
-  await contratoStart(page, menu, item5, tb); 
+  //Inicia contrato fical
+  await contratoFiscalStart(page, menu, item5, tb)
+  await camposOpcionaisContratos(page, newPage, menu, tb);
+  await contratoFinaliza(page);
+  
+  //Inicia contrato com fatura
+  await contratoFaturaStart(page, menu, item5, tb);
+  await camposOpcionaisContratos(page, newPage, menu, tb);
+  await contratoFinaliza(page);
+
+  await waitForAjax(page);
+  await contratoAtiva(page);
+
   //Inicia contrato Dinamico
   //await contratoDinamicoStart(page, menu, item5, tb);
-
-  await camposOpcionaisContratos(page, newPage, menu, tb);
-
-  //Finaliza contrato 
-  await contratoFinaliza(page);
-  //Finaliza contrato dinamico
+  //await camposOpcionaisContratos(page, newPage, menu, tb);
   //await contratoDinamicoFinaliza(page);
 });
