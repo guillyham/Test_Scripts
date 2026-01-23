@@ -319,3 +319,152 @@ export function normalizeText(text: string | null) {
   const clean = text.replace('R$', '').replace(/\s+/g, '').replace(/\./g, '').replace(',', '.');
   return clean.trim();
 }
+
+export function getFrames(page: Page) {
+  const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
+  const item5 = menu.frameLocator('iframe[name="item_5"]');
+  const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
+
+  return { menu, item5, tb };
+}
+
+// Cadastro do contrato
+export async function contratoStart(page: Page,  planName: string) {
+  const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
+  const item5 = menu.frameLocator('iframe[name="item_5"]');
+  const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
+
+  await waitForAjax(page);
+  const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
+  await expect(contrato).toBeVisible();
+  await contrato.click();
+
+  const Newcontrato = item5.getByTitle('Adicionar Novo Contrato para');
+  await expect(Newcontrato).toBeVisible();
+  await Newcontrato.click();
+
+  await tb.locator('#id_sc_field_incluir').click({ force: true });
+  await tb.locator('#id_sc_field_incluir').selectOption('P');
+
+  const planos = tb.getByText('Plano *');
+  await expect(planos).toBeVisible();
+
+  await tb.getByRole('combobox', { name: '(Escolha o plano)' }).click();
+  const searchInput = tb.locator('input[type="search"]');
+  await searchInput.waitFor({ state: 'visible' });
+
+  await searchInput.fill(planName);
+
+  const options = tb.locator('.select2-results__option', {
+    hasText: planName
+  });
+
+  await expect(options.first()).toBeVisible();
+  await options.first().click();
+
+  await tb.locator('#id_sc_field_assinatura').fill('14/05/2020');
+  await tb.locator('#id_sc_field_inicio').fill('14/05/2020');
+}
+
+// Cadastro finalização
+export async function contratoFinaliza(page: Page) {
+  // Carrega os frames
+  const { item5, tb } = getFrames(page);
+  await item5.locator('iframe[name^="TB_iframeContent"]').waitFor({ state: 'attached', timeout: 10000 });
+
+  await expect(tb.locator('#sc_Confirmar_bot')).toBeVisible({ timeout: 10000 });
+  await tb.locator('#sc_Confirmar_bot').click();
+
+  await expect.soft(tb.getByText('Confirma inclusão do(s)')).toBeVisible();
+  if (await tb.getByText('Confirma inclusão do(s)').isVisible()) {
+    await page.keyboard.press('Enter');
+  }
+
+  await tb.getByText('Contrato incluído com sucesso!').waitFor({ state: 'visible' });
+  await page.keyboard.press('Enter');
+
+  const contratoSair = tb.getByTitle('Sair da página');
+  await expect(contratoSair).toBeVisible();
+  await contratoSair.click();  
+}
+
+// Valida campos opcionais
+export async function camposOpcionaisContratos(page: Page, newPage: Page) {
+  const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
+  const item5 = menu.frameLocator('iframe[name="item_5"]');
+  const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
+  //Endereço de Instalação
+  {
+    const edInstLabel = tb.locator('#div_hidden_bloco_14').getByText('Endereço de Instalação');
+    await expect(edInstLabel).toBeVisible();
+    const edInst = (await edInstLabel.textContent())?.trim() ?? '';
+    if (edInst && edInst.includes("*")) {
+      await menu.locator('#id-opt-enderecoinstalacao-1').check();
+      await expect(menu.locator('#id_label_cep')).toBeVisible();
+
+      await newPage.bringToFront();
+      await newPage.locator('#cep span').nth(1).click();
+      await page.bringToFront();
+      await menu.locator('#id_sc_field_cep').click();
+      await page.keyboard.press('Control+V');
+
+      const CEPInput = menu.locator('#id_sc_field_cep');
+      await validateFields(CEPInput);
+
+      const contrNumeroTxt = menu.locator('#id_sc_field_numend');
+      await contrNumeroTxt.click();
+      await page.keyboard.type('123');
+
+      const contrCidadeInput = menu.locator('#id_sc_field_cidade');
+      await validateFields(contrCidadeInput);
+    }
+  }
+  //Endereço cobrança
+  {
+    const edInstLabel = tb.locator("#hidden_bloco_16").getByText('Endereço de Cobrança');
+    await expect(edInstLabel).toBeVisible();
+    const edInst = (await edInstLabel.textContent())?.trim() ?? '';
+    if (edInst && edInst.includes("*")) {
+      await menu.locator('#id-opt-enderecocobranca-1').check();
+      await expect(menu.locator('#id_sc_field_cobr_cep')).toBeVisible();
+
+      await newPage.bringToFront();
+      await newPage.locator('#cep span').nth(1).click();
+      await page.bringToFront();
+      await menu.locator('#id_sc_field_cobr_cep').click();
+      await page.keyboard.press('Control+V');
+
+      const CEPInput = menu.locator('#id_sc_field_cobr_cep');
+      await validateFields(CEPInput);
+
+      const contrNumeroTxt = menu.locator('#id_sc_field_cobr_numend');
+      await contrNumeroTxt.click();
+      await page.keyboard.type('321');
+
+      const contrCidadeInput = menu.locator('#id_sc_field_cobr_cidade');
+      await validateFields(contrCidadeInput);
+    }
+  }
+  //Terceiros
+  {}
+}
+
+// Processo de ativação dos contratos
+export async function contratoAtiva(page: Page){
+  let { menu, item5 } = getFrames(page);
+  const allBtns = '[id^="id_sc_field_btnativar_"]';
+  while (true) {
+    const btn = item5.locator(allBtns).first();
+    if (await btn.count() === 0) {
+      break;
+    }
+
+    if (!(await btn.isVisible())) {
+      break;
+    }
+    await btn.click();
+
+    await item5.getByTitle('Confirmar alterações').click();
+    await waitForAjax(page);
+  }
+}

@@ -336,7 +336,6 @@ async function validarFatura(page: Page, menu: FrameLocator, novoDocumento: stri
 }
 
 test('Faturamento', async ({ page }) => {
-  // Gera o cache dos itens do inspetor.
   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
   test.setTimeout(100000);
 
