@@ -11,7 +11,7 @@ Fluxo do teste:
 */
 
 // Gera pessoa para pegar os dados
-export async function gerarCliente(newPage: Page) {
+async function gerarCliente(newPage: Page) {
   await newPage.goto('https://www.4devs.com.br/gerador_de_pessoas', { waitUntil: 'domcontentloaded' });
   await newPage.getByRole('button', { name: 'Gerar Pessoa' }).click();
 }

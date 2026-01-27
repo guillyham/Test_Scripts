@@ -1,4 +1,6 @@
 import { expect, Locator, Page, Frame, FrameLocator } from '@playwright/test';
+import {fakerPT_BR as faker} from '@faker-js/faker';
+import { cpf } from 'cpf-cnpj-validator';
 require('dotenv').config();
 
 export async function randomSelect(
@@ -320,128 +322,191 @@ export function normalizeText(text: string | null) {
   return clean.trim();
 }
 
+export function gerarCliente() {
+  const primeiroNome = faker.person.firstName();
+  const sobrenome = faker.person.lastName();
+  return {
+    nomeCompleto: `${primeiroNome} ${sobrenome}`,
+    email: faker.internet.email({ firstName: primeiroNome, lastName: sobrenome }),
+    cpf: cpf.generate(),
+    cpfLimpo: cpf.generate(false), 
+  };
+}
+
 export function getFrames(page: Page) {
   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
   const item5 = menu.frameLocator('iframe[name="item_5"]');
   const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
-
-  return { menu, item5, tb };
+  const iframe = page
+    .frameLocator('iframe[name="app_menu_iframe"]')
+    .frameLocator('iframe[name^="TB_iframeContent"]');
+  let itb = iframe;
+  
+  return { menu, item5, tb, itb };
 }
 
 // Cadastro do contrato
+// export async function contratoStart(page: Page,  planName: string) {
+//   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
+//   const item5 = menu.frameLocator('iframe[name="item_5"]');
+//   const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
+
+//   await waitForAjax(page);
+//   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
+//   await expect(contrato).toBeVisible();
+//   await contrato.click();
+
+//   const Newcontrato = item5.getByTitle('Adicionar Novo Contrato para');
+//   await expect(Newcontrato).toBeVisible();
+//   await Newcontrato.click();
+
+//   await tb.locator('#id_sc_field_incluir').click({ force: true });
+//   await tb.locator('#id_sc_field_incluir').selectOption('P');
+
+//   const planos = tb.getByText('Plano *');
+//   await expect(planos).toBeVisible();
+
+//   await tb.getByRole('combobox', { name: '(Escolha o plano)' }).click();
+//   const searchInput = tb.locator('input[type="search"]');
+//   await searchInput.waitFor({ state: 'visible' });
+
+//   await searchInput.fill(planName);
+
+//   const options = tb.locator('.select2-results__option', {
+//     hasText: planName
+//   });
+
+//   await expect(options.first()).toBeVisible();
+//   await options.first().click();
+
+//   await tb.locator('#id_sc_field_assinatura').fill('14/05/2020');
+//   await tb.locator('#id_sc_field_inicio').fill('14/05/2020');
+// }
+
 export async function contratoStart(page: Page,  planName: string) {
-  const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
-  const item5 = menu.frameLocator('iframe[name="item_5"]');
-  const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
+  let { menu, tb, itb, item5 } = getFrames(page);
 
   await waitForAjax(page);
   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
-  await expect(contrato).toBeVisible();
-  await contrato.click();
+  let Newcontrato = menu.getByTitle('Adicionar Novo Contrato para o Cliente');
+  if(await contrato.isVisible()){
+    itb = tb;
+    await expect(contrato).toBeVisible();
+    await contrato.click();
+    Newcontrato = item5.getByTitle('Adicionar Novo Contrato para o Cliente');
+  }
 
-  const Newcontrato = item5.getByTitle('Adicionar Novo Contrato para');
+  await waitForAjax(page);
   await expect(Newcontrato).toBeVisible();
   await Newcontrato.click();
 
-  await tb.locator('#id_sc_field_incluir').click({ force: true });
-  await tb.locator('#id_sc_field_incluir').selectOption('P');
+  await itb.locator('#id_sc_field_incluir').click({ force: true });
+  await itb.locator('#id_sc_field_incluir').selectOption('P');
 
-  const planos = tb.getByText('Plano *');
+  const planos = itb.getByText('Plano *');
   await expect(planos).toBeVisible();
 
-  await tb.getByRole('combobox', { name: '(Escolha o plano)' }).click();
-  const searchInput = tb.locator('input[type="search"]');
+  await itb.getByRole('combobox', { name: '(Escolha o plano)' }).click();
+  const searchInput = itb.locator('input[type="search"]');
   await searchInput.waitFor({ state: 'visible' });
 
   await searchInput.fill(planName);
 
-  const options = tb.locator('.select2-results__option', {
+  const options = itb.locator('.select2-results__option', {
     hasText: planName
   });
 
   await expect(options.first()).toBeVisible();
   await options.first().click();
 
-  await tb.locator('#id_sc_field_assinatura').fill('14/05/2020');
-  await tb.locator('#id_sc_field_inicio').fill('14/05/2020');
+  await itb.locator('#id_sc_field_assinatura').fill('14/05/2020');
+  await itb.locator('#id_sc_field_inicio').fill('14/05/2020');
 }
 
 // Cadastro finalização
 export async function contratoFinaliza(page: Page) {
-  // Carrega os frames
-  const { item5, tb } = getFrames(page);
-  await item5.locator('iframe[name^="TB_iframeContent"]').waitFor({ state: 'attached', timeout: 10000 });
+  let { menu, tb, itb } = getFrames(page);
 
-  await expect(tb.locator('#sc_Confirmar_bot')).toBeVisible({ timeout: 10000 });
-  await tb.locator('#sc_Confirmar_bot').click();
+  const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
+  if(await contrato.isVisible()){
+    itb = tb;
+    await expect(contrato).toBeVisible();
+  }
 
-  await expect.soft(tb.getByText('Confirma inclusão do(s)')).toBeVisible();
-  if (await tb.getByText('Confirma inclusão do(s)').isVisible()) {
+  await expect(itb.locator('#sc_Confirmar_bot')).toBeVisible({ timeout: 10000 });
+  await itb.locator('#sc_Confirmar_bot').click();
+
+  await expect.soft(itb.getByText('Confirma inclusão do(s)')).toBeVisible();
+  if (await itb.getByText('Confirma inclusão do(s)').isVisible()) {
     await page.keyboard.press('Enter');
   }
 
-  await tb.getByText('Contrato incluído com sucesso!').waitFor({ state: 'visible' });
+  await itb.getByText('Contrato incluído com sucesso!').waitFor({ state: 'visible' });
   await page.keyboard.press('Enter');
 
-  const contratoSair = tb.getByTitle('Sair da página');
+  const contratoSair = itb.getByTitle('Sair da página');
   await expect(contratoSair).toBeVisible();
   await contratoSair.click();  
 }
 
 // Valida campos opcionais
 export async function camposOpcionaisContratos(page: Page, newPage: Page) {
-  const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
-  const item5 = menu.frameLocator('iframe[name="item_5"]');
-  const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
+  let { menu, tb, itb } = getFrames(page);
+
+  const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
+  if(await contrato.isVisible()){
+    itb = tb;
+    await expect(contrato).toBeVisible();
+  }
   //Endereço de Instalação
   {
-    const edInstLabel = tb.locator('#div_hidden_bloco_14').getByText('Endereço de Instalação');
+    const edInstLabel = itb.locator('#div_hidden_bloco_14').getByText('Endereço de Instalação');
     await expect(edInstLabel).toBeVisible();
     const edInst = (await edInstLabel.textContent())?.trim() ?? '';
     if (edInst && edInst.includes("*")) {
-      await menu.locator('#id-opt-enderecoinstalacao-1').check();
-      await expect(menu.locator('#id_label_cep')).toBeVisible();
+      await itb.locator('#id-opt-enderecoinstalacao-1').check();
+      await expect(itb.locator('#id_label_cep')).toBeVisible();
 
       await newPage.bringToFront();
       await newPage.locator('#cep span').nth(1).click();
       await page.bringToFront();
-      await menu.locator('#id_sc_field_cep').click();
+      await itb.locator('#id_sc_field_cep').click();
       await page.keyboard.press('Control+V');
 
-      const CEPInput = menu.locator('#id_sc_field_cep');
+      const CEPInput = itb.locator('#id_sc_field_cep');
       await validateFields(CEPInput);
 
-      const contrNumeroTxt = menu.locator('#id_sc_field_numend');
+      const contrNumeroTxt = itb.locator('#id_sc_field_numend');
       await contrNumeroTxt.click();
       await page.keyboard.type('123');
 
-      const contrCidadeInput = menu.locator('#id_sc_field_cidade');
+      const contrCidadeInput = itb.locator('#id_sc_field_cidade');
       await validateFields(contrCidadeInput);
     }
   }
   //Endereço cobrança
   {
-    const edInstLabel = tb.locator("#hidden_bloco_16").getByText('Endereço de Cobrança');
+    const edInstLabel = itb.locator("#hidden_bloco_16").getByText('Endereço de Cobrança');
     await expect(edInstLabel).toBeVisible();
     const edInst = (await edInstLabel.textContent())?.trim() ?? '';
     if (edInst && edInst.includes("*")) {
-      await menu.locator('#id-opt-enderecocobranca-1').check();
-      await expect(menu.locator('#id_sc_field_cobr_cep')).toBeVisible();
+      await itb.locator('#id-opt-enderecocobranca-1').check();
+      await expect(itb.locator('#id_sc_field_cobr_cep')).toBeVisible();
 
       await newPage.bringToFront();
       await newPage.locator('#cep span').nth(1).click();
       await page.bringToFront();
-      await menu.locator('#id_sc_field_cobr_cep').click();
+      await itb.locator('#id_sc_field_cobr_cep').click();
       await page.keyboard.press('Control+V');
 
-      const CEPInput = menu.locator('#id_sc_field_cobr_cep');
+      const CEPInput = itb.locator('#id_sc_field_cobr_cep');
       await validateFields(CEPInput);
 
-      const contrNumeroTxt = menu.locator('#id_sc_field_cobr_numend');
+      const contrNumeroTxt = itb.locator('#id_sc_field_cobr_numend');
       await contrNumeroTxt.click();
       await page.keyboard.type('321');
 
-      const contrCidadeInput = menu.locator('#id_sc_field_cobr_cidade');
+      const contrCidadeInput = itb.locator('#id_sc_field_cobr_cidade');
       await validateFields(contrCidadeInput);
     }
   }
@@ -451,7 +516,13 @@ export async function camposOpcionaisContratos(page: Page, newPage: Page) {
 
 // Processo de ativação dos contratos
 export async function contratoAtiva(page: Page){
-  let { menu, item5 } = getFrames(page);
+  let { menu, tb, itb, item5 } = getFrames(page);
+
+  const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
+  if(await contrato.isVisible()){
+    itb = tb;
+    await expect(contrato).toBeVisible();
+  }
   const allBtns = '[id^="id_sc_field_btnativar_"]';
   while (true) {
     const btn = item5.locator(allBtns).first();
