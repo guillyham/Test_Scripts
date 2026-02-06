@@ -345,44 +345,7 @@ export function getFrames(page: Page) {
   return { menu, item5, tb, itb };
 }
 
-// Cadastro do contrato
-// export async function contratoStart(page: Page,  planName: string) {
-//   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
-//   const item5 = menu.frameLocator('iframe[name="item_5"]');
-//   const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
-
-//   await waitForAjax(page);
-//   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
-//   await expect(contrato).toBeVisible();
-//   await contrato.click();
-
-//   const Newcontrato = item5.getByTitle('Adicionar Novo Contrato para');
-//   await expect(Newcontrato).toBeVisible();
-//   await Newcontrato.click();
-
-//   await tb.locator('#id_sc_field_incluir').click({ force: true });
-//   await tb.locator('#id_sc_field_incluir').selectOption('P');
-
-//   const planos = tb.getByText('Plano *');
-//   await expect(planos).toBeVisible();
-
-//   await tb.getByRole('combobox', { name: '(Escolha o plano)' }).click();
-//   const searchInput = tb.locator('input[type="search"]');
-//   await searchInput.waitFor({ state: 'visible' });
-
-//   await searchInput.fill(planName);
-
-//   const options = tb.locator('.select2-results__option', {
-//     hasText: planName
-//   });
-
-//   await expect(options.first()).toBeVisible();
-//   await options.first().click();
-
-//   await tb.locator('#id_sc_field_assinatura').fill('14/05/2020');
-//   await tb.locator('#id_sc_field_inicio').fill('14/05/2020');
-// }
-
+//Cadastro de contrato por parametro
 export async function contratoStart(page: Page,  planName: string) {
   let { menu, tb, itb, item5 } = getFrames(page);
 
@@ -423,6 +386,45 @@ export async function contratoStart(page: Page,  planName: string) {
   await itb.locator('#id_sc_field_inicio').fill('14/05/2020');
 }
 
+//Cadastro de contrato aleatório
+export async function contratoDinamico(page: Page) {
+  let { menu, tb, itb, item5 } = getFrames(page);
+
+  await waitForAjax(page);
+  const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
+  let Newcontrato = menu.getByTitle('Adicionar Novo Contrato para o Cliente');
+  if(await contrato.isVisible()){
+    itb = tb;
+    await expect(contrato).toBeVisible();
+    await contrato.click();
+    Newcontrato = item5.getByTitle('Adicionar Novo Contrato para o Cliente');
+  }
+
+  await waitForAjax(page);
+  await expect(Newcontrato).toBeVisible();
+  await Newcontrato.click();
+
+  await waitForAjax(page);
+  await itb.locator('#id_sc_field_incluir').click({ force: true });
+  await itb.locator('#id_sc_field_incluir').selectOption('P');
+
+  const planos = itb.getByText('Plano *');
+  await expect(planos).toBeVisible();
+
+  await itb.getByRole('combobox', { name: '(Escolha o plano)' }).click();
+
+  const realTrigger = itb.locator('#select2-id_sc_field_plano-container');
+  await expect(realTrigger).toBeVisible();
+  await realTrigger.click();
+
+  const selectedValue = await randomSelect2(itb, '#select2-id_sc_field_plano-container', ['padrão', 'Escolha o Plano', 'Inativo']);
+  const displayed = await itb.locator('#select2-id_sc_field_plano-container').textContent();
+  expect(displayed?.trim()).toBe(selectedValue);
+
+  await itb.locator('#id_sc_field_assinatura').fill('14/05/2020');
+  await itb.locator('#id_sc_field_inicio').fill('14/05/2020');
+}
+
 // Cadastro finalização
 export async function contratoFinaliza(page: Page) {
   let { menu, tb, itb } = getFrames(page);
@@ -450,7 +452,7 @@ export async function contratoFinaliza(page: Page) {
 }
 
 // Valida campos opcionais
-export async function camposOpcionaisContratos(page: Page, newPage: Page) {
+export async function camposOpcionaisContratos(page: Page) {
   let { menu, tb, itb } = getFrames(page);
 
   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
@@ -465,13 +467,11 @@ export async function camposOpcionaisContratos(page: Page, newPage: Page) {
     const edInst = (await edInstLabel.textContent())?.trim() ?? '';
     if (edInst && edInst.includes("*")) {
       await itb.locator('#id-opt-enderecoinstalacao-1').check();
+      await page.waitForLoadState('networkidle');
       await expect(itb.locator('#id_label_cep')).toBeVisible();
 
-      await newPage.bringToFront();
-      await newPage.locator('#cep span').nth(1).click();
-      await page.bringToFront();
       await itb.locator('#id_sc_field_cep').click();
-      await page.keyboard.press('Control+V');
+      await page.keyboard.type('20011000');
 
       const CEPInput = itb.locator('#id_sc_field_cep');
       await validateFields(CEPInput);
@@ -491,13 +491,11 @@ export async function camposOpcionaisContratos(page: Page, newPage: Page) {
     const edInst = (await edInstLabel.textContent())?.trim() ?? '';
     if (edInst && edInst.includes("*")) {
       await itb.locator('#id-opt-enderecocobranca-1').check();
+      await page.waitForLoadState('networkidle');
       await expect(itb.locator('#id_sc_field_cobr_cep')).toBeVisible();
 
-      await newPage.bringToFront();
-      await newPage.locator('#cep span').nth(1).click();
-      await page.bringToFront();
       await itb.locator('#id_sc_field_cobr_cep').click();
-      await page.keyboard.press('Control+V');
+      await page.keyboard.type('20011000');
 
       const CEPInput = itb.locator('#id_sc_field_cobr_cep');
       await validateFields(CEPInput);
@@ -511,21 +509,30 @@ export async function camposOpcionaisContratos(page: Page, newPage: Page) {
     }
   }
   //Terceiros
-  {}
+  {
+    const cptLocator = itb.locator('#id_label_pterceiro');
+    if (await cptLocator.isVisible()) {
+      await randomSelect(itb, '#id_sc_field_pterceiro', ['Selecione um Terceiro','(Selecione um Terceiro)']);
+    }
+
+    const cdtLocator = itb.locator('#id_label_dterceiro');
+    if (await cdtLocator.isVisible()) {
+      await randomSelect(itb, '#id_sc_field_dterceiro', ['(Selecione um Terceiro)']);
+    }
+  }
 }
 
 // Processo de ativação dos contratos
 export async function contratoAtiva(page: Page){
-  let { menu, tb, itb, item5 } = getFrames(page);
-
+  let { menu, item5 } = getFrames(page);
   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
   if(await contrato.isVisible()){
-    itb = tb;
+    menu = item5;
     await expect(contrato).toBeVisible();
   }
   const allBtns = '[id^="id_sc_field_btnativar_"]';
   while (true) {
-    const btn = item5.locator(allBtns).first();
+    const btn = menu.locator(allBtns).first();
     if (await btn.count() === 0) {
       break;
     }
@@ -535,7 +542,7 @@ export async function contratoAtiva(page: Page){
     }
     await btn.click();
 
-    await item5.getByTitle('Confirmar alterações').click();
+    await menu.getByTitle('Confirmar alterações').click();
     await waitForAjax(page);
   }
 }

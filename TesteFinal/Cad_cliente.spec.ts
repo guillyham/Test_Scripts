@@ -348,85 +348,6 @@ async function clienteCodigo(page: Page, menu: FrameLocator) {
   fs.writeFileSync('customerContext.json', JSON.stringify(sharedData));
 }
 
-// // Plano dinamico Inicio
-// async function contratoDinamicoStart(page: Page, menu: FrameLocator, item5: FrameLocator, tb: FrameLocator) {
-//   const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
-//   await expect(contrato).toBeVisible();
-//   await contrato.click();
-
-//   const Newcontrato = item5.getByTitle('Adicionar Novo Contrato para');
-//   await expect(Newcontrato).toBeVisible();
-//   await Newcontrato.click();
-
-//   await tb.locator('#id_sc_field_incluir').click({ force: true });
-//   await tb.locator('#id_sc_field_incluir').selectOption('P');
-
-//   const planos = tb.getByText('Plano *');
-//   await expect(planos).toBeVisible();
-
-//   await tb.getByRole('combobox', { name: '(Escolha o plano)' }).click();
-//   const searchInput = tb.locator('input[type="search"]');
-//   await searchInput.waitFor({ state: 'visible' });
-
-//   const realTrigger = tb.locator('#select2-id_sc_field_plano-container');
-//   await expect(realTrigger).toBeVisible();
-//   await realTrigger.click();
-
-//   const selectedValue = await randomSelect2(tb, '#select2-id_sc_field_plano-container', ['padrão']);
-//   const displayed = await tb.locator('#select2-id_sc_field_plano-container').textContent();
-//   expect(displayed?.trim()).toBe(selectedValue);
-
-//   await tb.locator('#id_sc_field_assinatura').fill('14/05/2020');
-//   await tb.locator('#id_sc_field_inicio').fill('14/05/2020');
-// }
-// // Plano Dinamico finalização
-// async function contratoDinamicoFinaliza(page: Page) {
-//   // Carrega os frames
-//   const { menu, item5, tb } = getFrames(page);
-//   await item5.locator('iframe[name^="TB_iframeContent"]').waitFor({ state: 'attached', timeout: 10000 });
-
-//   await expect(tb.locator('#sc_Confirmar_bot')).toBeVisible({ timeout: 10000 });
-//   await tb.locator('#sc_Confirmar_bot').click();
-
-//   const confirmText = tb.getByText('Confirma inclusão do(s)');
-//   await expect.soft(confirmText).toBeVisible({ timeout: 5000 });
-//   if (await confirmText.isVisible()) {
-//     await page.keyboard.press('Enter');
-//   }
-
-//   await tb.getByText('Contrato incluído com sucesso!').waitFor({ state: 'visible' });
-//   await page.keyboard.press('Enter');
-
-//   const contratoSair = tb.getByTitle('Sair da página');
-//   await expect(contratoSair).toBeVisible();
-//   await contratoSair.click();
-
-//   // Recarrega os frames novamente
-//   const { menu: refreshedMenu, item5: refreshedItem5 } = getFrames(page);
-
-//   const contrato = refreshedMenu.getByRole('menuitem', { name: 'Contratos' });
-//   await expect(contrato).toBeVisible();
-
-//   try {
-//     const ativarBtn = refreshedItem5.locator('#id_sc_field_btnativar_1');
-//     await ativarBtn.waitFor({ state: 'visible', timeout: 3000 });
-//     await ativarBtn.click();
-
-//     await refreshedItem5.getByText('Ativação de Contratos').waitFor();
-
-//     page.once('dialog', async dialog => {
-//       await dialog.accept();
-//     });
-
-//     await refreshedItem5.getByTitle('Confirmar alterações').click();
-//   } catch (e) { }
-
-//   const statusLocator = refreshedItem5.locator('#id_sc_field_gsituacao_1');
-//   await expect(statusLocator).toBeVisible({ timeout: 10000 });
-//   const statusText = (await statusLocator.textContent())?.trim() ?? '';
-//   expect(statusText).toBe('Ativo');
-// }
-
 // Fluxo principal do teste
 test('Cadastro completo de cliente com contrato fixo', async ({ page, context }) => {
   // Gera o cache dos itens do inspetor.
@@ -434,7 +355,7 @@ test('Cadastro completo de cliente com contrato fixo', async ({ page, context })
   const item5 = menu.frameLocator('iframe[name="item_5"]');
   const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
 
-  test.setTimeout(100000);
+  test.setTimeout(200000);
 
   await login(page);
 
@@ -452,19 +373,14 @@ test('Cadastro completo de cliente com contrato fixo', async ({ page, context })
 
   //Inicia contrato fical
   await contratoStart(page, "1001047-NFcom")
-  await camposOpcionaisContratos(page, newPage);
+  await camposOpcionaisContratos(page);
   await contratoFinaliza(page);
   
   //Inicia contrato com fatura
   await contratoStart(page, "1001023-Plano Multi Empresa");
-  await camposOpcionaisContratos(page, newPage);
+  await camposOpcionaisContratos(page);
   await contratoFinaliza(page);
-
+  
   await waitForAjax(page);
   await contratoAtiva(page);
-
-  //Inicia contrato Dinamico
-  //await contratoDinamicoStart(page, menu, item5, tb);
-  //await camposOpcionaisContratos(page, newPage, menu, tb);
-  //await contratoDinamicoFinaliza(page);
-});
+}); 

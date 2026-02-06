@@ -1,5 +1,5 @@
 import { test, expect, Page, Locator, FrameLocator } from '@playwright/test';
-import { login, waitForAjax, contratoStart, contratoFinaliza, camposOpcionaisContratos, contratoAtiva } from '../../lib/utils';
+import { login, waitForAjax, contratoStart, contratoFinaliza, camposOpcionaisContratos, contratoAtiva, getFrames } from '../../lib/utils';
 
 import fs from 'fs';
 
@@ -26,15 +26,26 @@ async function acessarCadastro(page: Page, menu: FrameLocator) {
         )
       });
   //acessa o cadstro
-  await rowSelector().locator('a.css_btneditar_grid_line').first().click();
+  await rowSelector().locator('a.css_btncontratos_grid_line').first().click();
 }
 
-async function gerarCliente(newPage: Page) {
-  await newPage.goto('https://www.4devs.com.br/gerador_de_pessoas', { waitUntil: 'domcontentloaded' });
-  await newPage.getByRole('button', { name: 'Gerar Pessoa' }).click();
-}
+async function contratoAcao(page: Page) {
+  let { menu, tb, itb } = getFrames(page);
+  await waitForAjax(page);
+console.log('1');
+  const rowSelector = () =>
+    menu
+      .locator('tr[id^="SC_ancor"]')
+      .filter({
+        has: menu.locator(
+          'td.css_codigo_grid_line',
+          { hasText: new RegExp(`^\\s*${'8-Multa cancelamento'}\\s*$`) }
+        )
+      });
+              console.log('2');
 
-async function contratoAcao(page: Page, menu: FrameLocator){
+  await rowSelector().locator('a.css_btncancelar_grid_line').first().click();
+          console.log('3');
 
 }
 
@@ -43,15 +54,13 @@ test('Contrato cancelamento', async ({ page, context }) => {
   test.setTimeout(100000);
 
   await login(page);
-  const newPage = await context.newPage();
-  await gerarCliente(newPage);
-  await page.bringToFront();
   await acessarCadastro(page, menu);
 
-  await contratoStart(page, "8-Multa Cancelamento")
-  await camposOpcionaisContratos(page, newPage);
-  await contratoFinaliza (page);
+  await contratoStart(page, "8-Multa Cancelamento");
+  await camposOpcionaisContratos(page);
+  await contratoFinaliza(page);
+  await waitForAjax(page);
   await contratoAtiva(page);
 
-  await contratoAcao(page, menu);
+  await contratoAcao(page);
 });
