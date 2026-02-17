@@ -342,7 +342,6 @@ test('Faturamento', async ({ page }) => {
   await login(page);
   await acessarCadastro(page, menu);
   const snapOri = await snapFinanceiro(page);
-  //console.log(snapOri);
   await menu.locator('#sc_Voltar_top').click();
 
   await faturarCliente(page, menu);
@@ -354,18 +353,15 @@ test('Faturamento', async ({ page }) => {
   await clientRow.locator('a.css_btnfinanceiro_grid_line').first().click();
   await waitForAjax(page);
   const snapNovo = await snapFinanceiro(page);
-  //console.log(snapNovo);
 
   const dif = snapNovo.filter(code => !snapOri.includes(code));
   const novoDocumento = dif[0];
 
   const clienteDados = await armazenarDados(page, menu, novoDocumento);
-  //console.log('Dados do Contrato Capturados:', clienteDados);
   await menu.locator('#sc_Voltar_top').click();
 
   await clientRow.locator('a.css_btnfinanceiro_grid_line').first().click();
   const dadosPdf = await extrairDadosPDF(menu, page);
-  //console.log('Dados do PDF Capturados:', dadosPdf);
 
   await validarDadosFinanceiros(page, menu,
     {

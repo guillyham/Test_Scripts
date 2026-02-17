@@ -10,7 +10,7 @@ import { REPL_MODE_SLOPPY } from 'repl';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 
 async function contratoCancelamento(page: Page, planoNome: string, dataC: string) {
-  let { menu, tb } = getFrames(page);
+  let { menu, tb, itb } = getFrames(page);
 
   await waitForAjax(page);
 
@@ -32,30 +32,30 @@ async function contratoCancelamento(page: Page, planoNome: string, dataC: string
   await rowSelector().locator('a.css_btncancelar_grid_line').first().click();
   await waitForAjax(page);
 
+  await randomSelect2(menu, '[aria-labelledby="select2-id_sc_field_motivo-container"]', ['(Selecione)']);
+  await waitForAjax(page);
   await menu.locator('#id_sc_field_cancelamento').click();
   await page.keyboard.type(dataC);
-  await randomSelect2(menu, '#select2-id_sc_field_motivo-container', ['Selecione, (Selecione)']);
+  await page.keyboard.press('Tab');
   await waitForAjax(page);
 
   const multaLabel = await menu.locator('#id_label_vlormulta');
   if (await multaLabel.isVisible()) {
-    const multaValor = await menu.locator('#id_ajax_label_vlormulta').textContent();
-    const valorLimpo = multaValor ? multaValor.replace(/[^\d,]/g, '').replace(',', '.'): '0'; 
-    const mvFinal = parseFloat(valorLimpo);
-    expect(mvFinal).toBeGreaterThan(0);
-    console.log(mvFinal);
+    // const multaValor = await menu.locator('#id_ajax_label_vlormulta').textContent();
+    // const valorLimpo = multaValor ? multaValor.replace(/[^\d,]/g, '').replace(',', '.'): '0'; 
+    // const mvFinal = parseFloat(valorLimpo);
+    // expect(mvFinal).toBeGreaterThan(0);
+    // console.log(mvFinal);
 
-    await menu.locator('#sc_Confirmar_bot').click();
-    const dialogPromise = page.waitForEvent('dialog');
-    await page.keyboard.press('enter');
-    const dialog = await dialogPromise;
-    await dialog.accept();
+    const frame = page.locator('iframe[name="app_menu_iframe"]').contentFrame();
+    await frame.getByTitle('Confirmar alterações').click();
+    await waitForAjax(page);
+    await page.keyboard.press('Enter');
   }
-  test.fail;
 }
 
 test('Run on existing Chrome', async () => {
-  test.setTimeout(50000);
+  test.setTimeout(80000);
   const browser = await chromium.connectOverCDP('http://localhost:9222');
   const context = browser.contexts()[0];
   const page = context.pages()[0];

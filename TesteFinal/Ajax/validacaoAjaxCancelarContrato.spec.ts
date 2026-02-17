@@ -1,6 +1,5 @@
 import { test, expect, Page, Locator, FrameLocator } from '@playwright/test';
 import { login, waitForAjax, contratoStart, contratoFinaliza, camposOpcionaisContratos, contratoAtiva, getFrames } from '../../lib/utils';
-
 import fs from 'fs';
 
 async function acessarCadastro(page: Page, menu: FrameLocator) {
