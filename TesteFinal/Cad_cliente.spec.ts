@@ -377,7 +377,8 @@ test('Cadastro completo de cliente com contrato fixo', async ({ page, context })
   await contratoFinaliza(page);
   
   //Inicia contrato com fatura
-  await contratoStart(page, "1001023-Plano Multi Empresa");
+  await contratoStart(page, "1001024-Fatura de Serviço - Descrição");
+  await waitForAjax(page);
   await camposOpcionaisContratos(page);
   await contratoFinaliza(page);
   

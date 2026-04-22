@@ -192,6 +192,7 @@ async function extrairDadosPDF(menu: FrameLocator, page: Page) {
   ]);
 
   await newPage.bringToFront();
+  await waitForAjax(newPage);
   const msgVencido = newPage.getByText('Imprimir boleto vencido atualizado?');
   if (await msgVencido.isVisible()) {
     await newPage.locator('#sub_form_b').click();

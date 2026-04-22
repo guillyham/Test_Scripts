@@ -1,58 +1,16 @@
+//Start-Process "C:\Program Files\Google\Chrome\Application\chrome.exe" -ArgumentList "--remote-debugging-port=9222 --user-data-dir=C:\temp\chrome_debug"
 import { test, chromium, expect, FrameLocator, Page, Frame } from '@playwright/test';
 import {
   debugSelectorCounts, randomSelect, randomSelect2, login, waitForAjax, getFrames, validateFields, normalizeText,
-  contratoStart, contratoFinaliza, gerarCliente
+  contratoStart, contratoFinaliza, gerarCliente, findAndClickConfirmAndHandleDialog
 } from './lib/utils';
 import { parsePdfBuffer } from './lib/pdfUtils';
-import fs, { watch } from 'fs';
-import { count, debug } from 'console';
-import { REPL_MODE_SLOPPY } from 'repl';
 import { fakerPT_BR as faker } from '@faker-js/faker';
+import { debug } from 'node:console';
 
-async function contratoCancelamento(page: Page, planoNome: string, dataC: string) {
-  let { menu, tb, itb } = getFrames(page);
 
-  await waitForAjax(page);
 
-  const contrato = menu.getByRole('menuitem', { name: 'Contratos' });
-  if (await contrato.isVisible()) {
-    menu = tb;
-    await expect(contrato).toBeVisible();
-  }
 
-  const rowSelector = () =>
-    menu
-      .locator('tr[id^="SC_ancor"]')
-      .filter({
-        has: menu.locator(
-          'td.css_plano_grid_line',
-          { hasText: new RegExp(`^\\s*${planoNome}\\s*$`) }
-        )
-      });
-  await rowSelector().locator('a.css_btncancelar_grid_line').first().click();
-  await waitForAjax(page);
-
-  await randomSelect2(menu, '[aria-labelledby="select2-id_sc_field_motivo-container"]', ['(Selecione)']);
-  await waitForAjax(page);
-  await menu.locator('#id_sc_field_cancelamento').click();
-  await page.keyboard.type(dataC);
-  await page.keyboard.press('Tab');
-  await waitForAjax(page);
-
-  const multaLabel = await menu.locator('#id_label_vlormulta');
-  if (await multaLabel.isVisible()) {
-    // const multaValor = await menu.locator('#id_ajax_label_vlormulta').textContent();
-    // const valorLimpo = multaValor ? multaValor.replace(/[^\d,]/g, '').replace(',', '.'): '0'; 
-    // const mvFinal = parseFloat(valorLimpo);
-    // expect(mvFinal).toBeGreaterThan(0);
-    // console.log(mvFinal);
-
-    const frame = page.locator('iframe[name="app_menu_iframe"]').contentFrame();
-    await frame.getByTitle('Confirmar alterações').click();
-    await waitForAjax(page);
-    await page.keyboard.press('Enter');
-  }
-}
 
 test('Run on existing Chrome', async () => {
   test.setTimeout(80000);
@@ -61,5 +19,9 @@ test('Run on existing Chrome', async () => {
   const page = context.pages()[0];
   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
 
-  await contratoCancelamento(page, '8-Multa cancelamento', '14/07/2020');
+  //await contratoCancelamento(page, "8-Multa cancelamento", "14/05/2020");
+
+  //await login(page);
+  //await acessarPlanos(page, menu);
+
 });

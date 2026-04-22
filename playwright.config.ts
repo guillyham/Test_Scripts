@@ -23,7 +23,7 @@ export default defineConfig({
     //teste da base: teste final
     { name: 'Ajax_Estoque', testMatch: ['**/TesteFinal/Ajax/validacaoAjaxEstoque.spec.ts'] },
     { name: 'Ajax_Pedidos', testMatch: ['**/TesteFinal/Ajax/validacaoAjaxPedidos.spec.ts'] },
-    { name: 'Ajax_Planos', testMatch: ['**/TesteFinal/Ajax/validacaoAjaxPlanos.spec.ts'] },
+    { name: 'Ajax_Planos',  testMatch:  ['**/TesteFinal/Ajax/validacaoAjaxPlanos.spec.ts'] },
     { name: 'Ajax_Cancelamento', testMatch: ['**/TesteFinal/Ajax/validacaoAjaxCancelarContrato.spec.ts'] },
     { name: 'Cad_Cliente', testMatch: ['**/Cad_cliente.spec.ts'], use: { headless: false, launchOptions: { slowMo: 200 } } },
     { name: 'Cad-Planos', testMatch: ['**/Cad_Planos.spec.ts'] },

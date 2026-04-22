@@ -11,6 +11,7 @@ export async function randomSelect(
   const select = menu.locator(selectSelector);
   await expect(select).toBeVisible({ timeout: 10000 });
 
+  const currentValue = await select.inputValue().catch(() => '');
   const options = select.locator('option');
   const count = await options.count();
 
@@ -34,10 +35,12 @@ export async function randomSelect(
     throw new Error(`Erro: Sem valor selecionável para ${selectSelector}`);
   }
 
-  const randomValue = validOptions[Math.floor(Math.random() * validOptions.length)];
-  await select.selectOption({ value: randomValue });
+  const candidates = validOptions.filter((value) => value !== currentValue);
+  const pickList = candidates.length > 0 ? candidates : validOptions;
+  const randomValue = pickList[Math.floor(Math.random() * pickList.length)];
 
-  await expect(select).toHaveValue(randomValue);
+  await select.selectOption({ value: randomValue });
+  await expect(select).toHaveValue(randomValue, { timeout: 5000 });
 
   return randomValue;
 }
@@ -51,7 +54,6 @@ export async function randomSelect2(
   await expect(trigger).toBeVisible({ timeout: 10000 });
   await trigger.click();
 
-  // Wait for dropdown options container
   const optionsContainer = menu.locator('.select2-results__options');
   await expect(optionsContainer).toBeVisible({ timeout: 10000 });
 
@@ -67,7 +69,7 @@ export async function randomSelect2(
     if (
       text.length > 0 &&
       !blacklist.some((bad) => text.toLowerCase().includes(bad.toLowerCase())) &&
-      !(await option.getAttribute('aria-disabled')) // avoid disabled
+      !(await option.getAttribute('aria-disabled'))
     ) {
       validOptions.push({ index: i, text });
     }
@@ -80,11 +82,8 @@ export async function randomSelect2(
   const random = validOptions[Math.floor(Math.random() * validOptions.length)];
   await options.nth(random.index).click();
 
-  // Validate selection reflected
-  const selectedText = await trigger.textContent();
-  const trimmed = selectedText?.trim() ?? '';
-
-  expect(trimmed).toBe(random.text);
+  const selectedText = (await trigger.textContent())?.trim() ?? '';
+  expect(selectedText).toBe(random.text);
 
   return random.text;
 }
@@ -100,30 +99,27 @@ export async function robustRandomSelect2(
     const trigger = menu.locator(dropdownTriggerSelector);
     await expect(trigger).toBeVisible({ timeout: 5000 });
 
-    // FIX: Check state to avoid "Toggle Trap" (opening then closing in loop)
+    const currentText = (await trigger.textContent())?.trim() ?? '';
     const isExpanded = await trigger.getAttribute('aria-expanded');
     if (isExpanded !== 'true') {
       await trigger.click();
     }
 
     const optionsContainer = menu.locator('.select2-results__options');
-    // Ensure it opened; if not, click might have failed or state was desynced
     if (!await optionsContainer.isVisible()) {
-        await trigger.click(); 
+      await trigger.click();
     }
-    
+
     await expect(optionsContainer).toBeVisible({ timeout: 5000 });
 
-    // Filter valid options
     const options = optionsContainer.locator('.select2-results__option:not([aria-disabled="true"])');
     const count = await options.count();
 
     if (count === 0) {
-      // Force close to reset state for next retry if empty
-      await menu.keyboard.press('Escape'); 
+      await menu.keyboard.press('Escape');
       throw new Error('No options available to select, retrying...');
     }
-    
+
     const validOptions: { index: number; text: string }[] = [];
     for (let i = 0; i < count; i++) {
       const option = options.nth(i);
@@ -135,21 +131,29 @@ export async function robustRandomSelect2(
     }
 
     if (validOptions.length === 0) {
-       await menu.keyboard.press('Escape');
+      await menu.keyboard.press('Escape');
       throw new Error('No valid (non-blacklisted) options available, retrying...');
     }
 
-    const random = validOptions[Math.floor(Math.random() * validOptions.length)];
+    let candidates = validOptions;
+    if (currentText && validOptions.length > 1) {
+      const different = validOptions.filter((option) => option.text !== currentText);
+      if (different.length > 0) {
+        candidates = different;
+      }
+    }
+
+    const random = candidates[Math.floor(Math.random() * candidates.length)];
     await options.nth(random.index).click();
 
-    // Verification
-    const selectedDisplay = menu.locator(dropdownTriggerSelector);
-    await expect(selectedDisplay).toContainText(random.text, { timeout: 3000 });
-    
+    await retryUntil(async () => {
+      const selectedDisplay = (await trigger.textContent())?.trim() ?? '';
+      return selectedDisplay === random.text && selectedDisplay !== currentText;
+    }, { timeout: 5000, interval: 250 });
+
     selectedText = random.text;
-    return true; 
-    
-  }, { timeout: 20000, interval: 1000 }); // Increased timeout and interval
+    return true;
+  }, { timeout: 20000, interval: 1000 });
 
   if (selectedText === '') {
     throw new Error(`Failed to select an option for "${dropdownTriggerSelector}" after multiple retries.`);
@@ -238,33 +242,31 @@ export async function waitForAjax(
   const initialTimeout = 1000; // timeout for spinner to become visible
   const hiddenTimeout = 5000;  // timeout for spinner to disappear
 
-  // console.log('WAITING FOR AJAX'); // enable for debug if needed
-
   for (const selector of spinnerSelectors) {
     const spinner = page.locator(selector);
+
     await retryUntil(async () => {
       try {
-        // Wait briefly for spinner to appear, ignore if it doesn’t
         await spinner.waitFor({ state: 'visible', timeout: initialTimeout }).catch(() => {});
-        // If spinner appeared, then wait for it to disappear
         await spinner.waitFor({ state: 'hidden', timeout: hiddenTimeout });
         return true;
       } catch (e) {
-        // If spinner didn’t behave, log + retry
         console.warn(`Spinner '${selector}' did not behave as expected: ${e}`);
         return false;
       }
-    }, { timeout: initialTimeout + hiddenTimeout + 1000, interval: 250 });
+    }, { timeout: initialTimeout + hiddenTimeout + 1000, interval: 250 }).catch(() => {
+      // If the spinner never appeared, continue; this is a best-effort wait.
+    });
   }
 
-  // Guarantee a minimum delay even if no spinners were visible
+  // Best-effort network idle after spinner handling.
+  await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {});
+
   const elapsed = Date.now() - start;
   const remaining = minDelay - elapsed;
   if (remaining > 0) {
     await page.waitForTimeout(remaining);
   }
-
-  // console.log('PASS'); // enable for debug if needed
 }
 
 export async function retryUntil(
@@ -517,7 +519,7 @@ export async function camposOpcionaisContratos(page: Page) {
 
     const cdtLocator = itb.locator('#id_label_dterceiro');
     if (await cdtLocator.isVisible()) {
-      await randomSelect(itb, '#id_sc_field_dterceiro', ['(Selecione um Terceiro)']);
+      await randomSelect(itb, '#id_sc_field_dterceiro', ['Selecione um Terceiro','(Selecione um Terceiro)']);
     }
   }
 }
@@ -545,4 +547,237 @@ export async function contratoAtiva(page: Page){
     await menu.getByTitle('Confirmar alterações').click();
     await waitForAjax(page);
   }
+}
+
+// Usado no processo de cancelamento dos contratos, para clicrar no salvar e tratar os prompts de confirmação.
+export async function findAndClickConfirmAndHandleDialog(page: Page, timeout: number = 5000) {
+  const sel = '#sc_Confirmar_bot';
+
+  // 1) print frames (diagnostic)
+  console.log('Frames on page:');
+  for (const f of page.frames()) {
+    console.log(`- name: "${f.name() || '(no-name)'}", url: ${f.url()}`);
+  }
+
+  // 2) find the frame that contains the button
+  let frameWithBtn: import('playwright').Frame | undefined;
+  for (const f of page.frames()) {
+    try {
+      const handle = await f.$(sel);
+      if (handle) {
+        frameWithBtn = f;
+        await handle.dispose();
+        console.log('Found selector in frame:', f.name() || '(no-name)', f.url());
+        break;
+      }
+    } catch (e) {
+      console.warn('Frame query failed for frame', f.name(), e);
+    }
+  }
+
+  if (!frameWithBtn) {
+    throw new Error(`Selector ${sel} not found in any frame.`);
+  }
+
+  // 3) Attach dialog handler BEFORE the click so native confirm/alert will be captured.
+  let dialogHandled = false;
+  const dialogPromise = new Promise<{ type: string; message: string }>((resolve) => {
+    const handler = async (dialog: import('playwright').Dialog) => {
+      try {
+        console.log('Dialog appeared:', dialog.type(), dialog.message());
+        // Accept by default (change if you need to dismiss)
+        await dialog.accept();
+        dialogHandled = true;
+        resolve({ type: dialog.type(), message: dialog.message() });
+      } catch (err) {
+        console.warn('Error while handling dialog', err);
+        resolve({ type: 'error', message: String(err) });
+      } finally {
+        page.off('dialog', handler);
+      }
+    };
+    page.on('dialog', handler);
+  });
+
+  // 4) Dump function source of scBtnFn_Confirmar for inspection (if exists)
+  try {
+    const src = await frameWithBtn.evaluate(() => {
+      // @ts-ignore
+      const fn = (window as any).scBtnFn_Confirmar;
+      return fn ? fn.toString() : null;
+    });
+    console.log('scBtnFn_Confirmar source (truncated):', src ? src.slice(0, 1000) : 'NOT FOUND');
+  } catch (e) {
+    console.warn('Could not evaluate scBtnFn_Confirmar source:', e);
+  }
+
+  // 5) Start waiting for known custom modal selectors (SweetAlert, Bootbox, Bootstrap modal) in parallel
+  const modalSelectors = [
+    'body .swal2-popup',     // SweetAlert2
+    'body .swal-modal',      // SweetAlert older
+    'body .bootbox',         // Bootbox
+    'body .modal.show',      // Bootstrap modal (visible)
+    '[role="dialog"] .confirm, [role="dialog"] .btn-primary', // generic dialog confirm
+  ];
+
+  const modalPromise = (async () => {
+    for (const selModal of modalSelectors) {
+      try {
+        // check inside frame (the modal might be in the same frame)
+        const locator = frameWithBtn.locator(selModal);
+        await locator.waitFor({ timeout: 1200 }).then(() => {
+          return selModal;
+        });
+        return selModal;
+      } catch {}
+      // Also check in top page as some modals are appended to top document
+      try {
+        const locatorTop = page.locator(selModal);
+        await locatorTop.waitFor({ timeout: 1200 }).then(() => {
+          return selModal;
+        });
+        return selModal;
+      } catch {}
+    }
+    // no modal found
+    return null;
+  })();
+
+  // 6) Try to click the button (frame.click + fallback strategies)
+  let clickSucceeded = false;
+  try {
+    console.log('Attempting frame.click(...)');
+    await frameWithBtn.click(sel, { timeout: 3000 });
+    clickSucceeded = true;
+    console.log('Clicked using frame.click');
+  } catch (e) {
+    console.warn('frame.click failed, trying elementHandle click and DOM click', e);
+    try {
+      const handle = await frameWithBtn.$(sel);
+      if (handle) {
+        await handle.click({ timeout: 2000 }).catch(() => {});
+        // fallback DOM click
+        await frameWithBtn.evaluate((s) => {
+          const el = document.querySelector(s) as HTMLElement | null;
+          if (el) el.click();
+        }, sel).catch(() => {});
+        await handle.dispose();
+        clickSucceeded = true;
+        console.log('Tried elementHandle.click + DOM click fallback');
+      }
+    } catch (err2) {
+      console.warn('elementHandle click fallback failed', err2);
+    }
+  }
+
+  // 7) Wait for either native dialog or modal DOM up to overall timeout
+  const overallTimeout = timeout;
+  const start = Date.now();
+  let performedAction = false;
+
+  try {
+    // race between dialogPromise and modal detection
+    const race = await Promise.race([
+      dialogPromise,
+      modalPromise,
+      new Promise((res) => setTimeout(() => res(null), overallTimeout)),
+    ]);
+
+    if (race && (race as any).type) {
+      // native dialog handled earlier by page.on('dialog')
+      console.log('Native dialog handled:', race);
+      performedAction = true;
+    } else if (race && typeof race === 'string') {
+      // modal selector name returned: click its confirm button
+      const modalSel = race as string;
+      console.log('Detected modal by selector:', modalSel);
+      // Try to click confirm button inside the modal
+      const confirmSelectors = ['.swal2-confirm', '.confirm', '.btn-primary', '.btn-success', 'button[data-action="confirm"]'];
+      let clickedModalConfirm = false;
+      // Try in frame first
+      for (const cs of confirmSelectors) {
+        try {
+          const locator = frameWithBtn.locator(`${modalSel} ${cs}`);
+          if (await locator.count() > 0) {
+            await locator.first().click({ timeout: 2000 }).catch(() => {});
+            clickedModalConfirm = true;
+            console.log('Clicked modal confirm via frame locator', cs);
+            break;
+          }
+        } catch {}
+        // try global page
+        try {
+          const topLocator = page.locator(`${modalSel} ${cs}`);
+          if (await topLocator.count() > 0) {
+            await topLocator.first().click({ timeout: 2000 }).catch(() => {});
+            clickedModalConfirm = true;
+            console.log('Clicked modal confirm via page locator', cs);
+            break;
+          }
+        } catch {}
+      }
+      if (!clickedModalConfirm) {
+        console.warn('Modal was detected but no confirm button matched known selectors.');
+      } else {
+        performedAction = true;
+      }
+    } else {
+      console.log('No native dialog or known modal detected within timeout');
+    }
+  } catch (e) {
+    console.warn('Error while waiting for dialog/modal:', e);
+  }
+
+  // 8) If no dialog or modal observed, try calling the onclick handler directly (last resort)
+  if (!dialogHandled && !performedAction) {
+    console.log('No dialog/modal observed after click. Trying to call scBtnFn_Confirmar() directly as a fallback.');
+    try {
+      const res = await frameWithBtn.evaluate(() => {
+        // @ts-ignore
+        if (typeof (window as any).scBtnFn_Confirmar === 'function') {
+          try {
+            // @ts-ignore
+            (window as any).scBtnFn_Confirmar();
+            return 'called-scBtnFn_Confirmar';
+          } catch (err) {
+            return { error: String(err) };
+          }
+        }
+        return 'no-scBtnFn_Confirmar';
+      });
+      console.log('Direct call result:', res);
+    } catch (e) {
+      console.warn('Direct call failed:', e);
+    }
+  }
+
+  // 9) Final diagnostic: check if any known confirm modal is present now and print relevant HTML for manual inspection
+  try {
+    for (const selModal of modalSelectors) {
+      try {
+        const countFrame = await frameWithBtn.locator(selModal).count();
+        if (countFrame > 0) {
+          console.log('Modal present in frame with selector:', selModal);
+          const html = await frameWithBtn.locator(selModal).first().innerHTML();
+          console.log('Modal HTML (truncated):', html.slice(0, 1000));
+          break;
+        }
+        const countTop = await page.locator(selModal).count();
+        if (countTop > 0) {
+          console.log('Modal present in top page with selector:', selModal);
+          const htmlTop = await page.locator(selModal).first().innerHTML();
+          console.log('Top modal HTML (truncated):', htmlTop.slice(0, 1000));
+          break;
+        }
+      } catch {}
+    }
+  } catch (e) {
+    /* ignore */
+  }
+
+  // Ensure the page event listener is cleaned (if any left)
+  // Note: the dialog handler removes itself on resolve; this is defensive:
+  try {
+    page.removeAllListeners?.('dialog');
+  } catch {}
 }

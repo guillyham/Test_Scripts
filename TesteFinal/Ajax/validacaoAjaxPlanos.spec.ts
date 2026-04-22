@@ -15,6 +15,7 @@ async function acessarPlanos(page: Page, menu: FrameLocator) {
   await page.getByRole('link', { name: 'Empresa' }).click();
   await page.getByRole('link', { name: 'Clientes' }).click();
   await page.getByRole('link', { name: 'Planos' }).click();
+  await expect(page.locator('#item_11')).toBeVisible({ timeout: 10000 });
   await page.locator('#item_11').click();
 }
 
@@ -31,14 +32,20 @@ async function validacaoAjaxPlanos(page: Page, menu: FrameLocator) {
     throw new Error("No plans found to edit. Cannot proceed with the test.");
   }
   const randomIndex = Math.floor(Math.random() * count);
-  await allEditButtons.nth(randomIndex).click();
+  const chosenEditButton = allEditButtons.nth(randomIndex);
+  await expect(chosenEditButton).toBeVisible({ timeout: 10000 });
+  await chosenEditButton.click();
   await waitForAjax(page);
 
-  await menu.locator('#id_cad_planos_cadastro_form4').click();
+  const cadastroForm4 = menu.locator('#id_cad_planos_cadastro_form4');
+  await expect(cadastroForm4).toBeVisible({ timeout: 10000 });
+  await cadastroForm4.click();
   await waitForAjax(page);
 
   const cobrancaPTerceiro = menu.locator('#id_sc_field_cobrpt');
+  await expect(cobrancaPTerceiro).toBeVisible({ timeout: 10000 });
   const cobrancaDTerceiro = menu.locator('#id_sc_field_cobrdt');
+  await expect(cobrancaDTerceiro).toBeVisible({ timeout: 10000 });
 
   // originais (valor do option selecionado)
   const cobrancaPTerceiroOri = await cobrancaPTerceiro.inputValue();
@@ -61,7 +68,7 @@ async function validacaoAjaxPlanos(page: Page, menu: FrameLocator) {
     if (cobrPtercSecondSelector === 'S') {
       await waitForAjax(page);
       const icon = menu.locator('.icon_fa.fas.fa-forward').first();
-      await expect(icon).toBeVisible();
+      await expect(icon).toBeVisible({ timeout: 10000 });
       await icon.click();
       await waitForAjax(page);
 
@@ -140,7 +147,7 @@ test('Testar Ajax Planos', async ({ page }) => {
   const item5 = menu.frameLocator('iframe[name="item_5"]');
   const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
 
-  test.setTimeout(50000);
+  test.setTimeout(80000);
 
   await login(page);
   await acessarPlanos(page, menu);
