@@ -1,7 +1,7 @@
 import { expect, Locator, Page, Frame, FrameLocator } from '@playwright/test';
 import {fakerPT_BR as faker} from '@faker-js/faker';
 import { cpf } from 'cpf-cnpj-validator';
-require('dotenv').config();
+import 'dotenv/config';
 
 export async function randomSelect(
   menu: Page | Frame | FrameLocator,
@@ -90,6 +90,7 @@ export async function randomSelect2(
 
 export async function robustRandomSelect2(
   menu: Page | Frame | FrameLocator,
+  page: Page,
   dropdownTriggerSelector: string,
   blacklist: string[] = []
 ): Promise<string> {
@@ -116,7 +117,7 @@ export async function robustRandomSelect2(
     const count = await options.count();
 
     if (count === 0) {
-      await menu.keyboard.press('Escape');
+      await page.keyboard.press('Escape');
       throw new Error('No options available to select, retrying...');
     }
 
@@ -131,7 +132,7 @@ export async function robustRandomSelect2(
     }
 
     if (validOptions.length === 0) {
-      await menu.keyboard.press('Escape');
+      await page.keyboard.press('Escape');
       throw new Error('No valid (non-blacklisted) options available, retrying...');
     }
 
@@ -223,8 +224,8 @@ export async function validateFields(
 }
 
 export async function login(page: Page) {
-  const usuario = process.env.USUARIO;
-  const senha = process.env.SENHA;
+  const usuario = process.env.USUARIO ?? '';
+  const senha = process.env.SENHA ?? '';
 
   await page.goto('https://desenvtestfinal.rbxsoft.com/routerbox/app_login/index.php');
   //await page.goto('https://desenvtest-deb12.rbxsoft.com/routerbox/app_login/index.php');

@@ -7,6 +7,30 @@ Fluxo do teste:
 2 - valida ajax da aba estoque mudando os campos e validando os valores
 */
 
+const isInvalidText = (s: string) => {
+  const v = (s ?? '').trim().toLowerCase();
+  return v === '' || v === 'selecione' || v === '(selecione)' || v === 'padrão';
+};
+
+async function selectAndTrack(
+  menu: FrameLocator,
+  page: Page,
+  ariaId: string,
+  excludes: string[],
+  name: string,
+  originalValue: string,
+  errorLabel: string,
+  altered: Array<{ name: string; locator: Locator }>
+): Promise<void> {
+  const selector = `[aria-labelledby="${ariaId}"]`;
+  const ctr = menu.locator(selector);
+  await robustRandomSelect2(menu, page, selector, excludes);
+  await waitForAjax(page);
+  const newValue = (await ctr.textContent())?.trim() ?? '';
+  if (isInvalidText(newValue)) throw new Error(`${errorLabel} inválido: "${newValue}"`);
+  if (newValue !== originalValue) altered.push({ name, locator: ctr });
+}
+
 async function acessarDadosGerais(page: Page, menu: FrameLocator) {
   await page.getByText('x', { exact: true }).click();
   await page.locator('img').first().click();
@@ -26,18 +50,12 @@ async function validacaoAjaxEstoque(page: Page, menu: FrameLocator) {
   await expect(checkedRadio).toBeVisible();
   const campoAtdVlrOri = await checkedRadio.getAttribute('value');
 
-  //Coleta valor original dos campos
   const topfluxVlrOri = (await menu.locator('#select2-id_sc_field_retequip_topflux-container').textContent())?.trim() ?? '';
   const fluxItemVlrOri = (await menu.locator('#select2-id_sc_field_retequip_fluxitem-container').textContent())?.trim() ?? '';
   const designarAtdOri = await menu.locator('#id_sc_field_retequip_designar').inputValue();
   const designarAlvoOri = (await menu.locator('#select2-id_sc_field_retequip_designaralvo-container').textContent())?.trim() ?? '';
 
   const altered = [] as Array<{ name: string; locator: Locator }>;
-
-  const isInvalidText = (s: string) => {
-    const v = (s ?? '').trim().toLowerCase();
-    return v === '' || v === 'selecione' || v === '(selecione)' || v === 'padrão';
-  };
 
   await waitForAjax(page);
 
@@ -47,34 +65,14 @@ async function validacaoAjaxEstoque(page: Page, menu: FrameLocator) {
     await waitForAjax(page);
     await expect(menu.locator('#id_label_retequip_fluxitem')).toBeVisible();
 
-    // Selecionador do fluxo
-    const topFluxCtr = menu.locator('[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]');
-    await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]', ['padrão']);
-    await waitForAjax(page);
-    const topfluxVlrNovo = (await topFluxCtr.textContent())?.trim() ?? '';
-    if (isInvalidText(topfluxVlrNovo)) throw new Error(`TopFlux inválido: "${topfluxVlrNovo}"`);
-    if (topfluxVlrNovo !== topfluxVlrOri) altered.push({ name: 'topflux', locator: topFluxCtr });
-
-    // Selecionador do fluxo item
-    const fluxCtr = menu.locator('[aria-labelledby="select2-id_sc_field_retequip_fluxitem-container"]');
-    await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_fluxitem-container"]', ['Selecione']);
-    await waitForAjax(page);
-    const fluxItemVlrNovo = (await fluxCtr.textContent())?.trim() ?? '';
-    if (isInvalidText(fluxItemVlrNovo)) throw new Error(`Fluxo inválido: "${fluxItemVlrNovo}"`);
-    if (fluxItemVlrNovo !== fluxItemVlrOri) altered.push({ name: 'fluxitem', locator: fluxCtr });
-
+    await selectAndTrack(menu, page, 'select2-id_sc_field_retequip_topflux-container', ['(Selecione)'], 'topflux', topfluxVlrOri, 'TopFlux', altered);
+    await selectAndTrack(menu, page, 'select2-id_sc_field_retequip_fluxitem-container', ['Selecione'], 'fluxitem', fluxItemVlrOri, 'Fluxo', altered);
   } else {
     // Quando for Topico
     await menu.locator('input[name="retequip_atendtipo"][value="T"]').check();
     await waitForAjax(page);
 
-    // Selecionador do Topico
-    const topFluxCtr = menu.locator('[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]');
-    await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_topflux-container"]', ['Selecione']);
-    await waitForAjax(page);
-    const topfluxVlrNovo = (await topFluxCtr.textContent())?.trim() ?? '';
-    if (isInvalidText(topfluxVlrNovo)) throw new Error(`TopFlux inválido: "${topfluxVlrNovo}"`);
-    if (topfluxVlrNovo !== topfluxVlrOri) altered.push({ name: 'topflux', locator: topFluxCtr });
+    await selectAndTrack(menu, page, 'select2-id_sc_field_retequip_topflux-container', ['Selecione'], 'topflux', topfluxVlrOri, 'TopFlux', altered);
   }
 
   // Campo designar atendimento (usa select padrão, não muda)
@@ -84,26 +82,22 @@ async function validacaoAjaxEstoque(page: Page, menu: FrameLocator) {
   if (!designarAtdNew || designarAtdNew === 'N') throw new Error(`DesignarAtd inválido: "${designarAtdNew}"`);
   if (designarAtdNew !== designarAtdOri) altered.push({ name: 'designarAtd', locator: menu.locator('#id_sc_field_retequip_designar') });
 
-  // Designar alvo 
-  const designarAlvoCtr = menu.locator('[aria-labelledby="select2-id_sc_field_retequip_designaralvo-container"]');
-  await robustRandomSelect2(menu, '[aria-labelledby="select2-id_sc_field_retequip_designaralvo-container"]', ['selecione', 'padrão']);
-  await waitForAjax(page);
-  const designarAlvoNew = (await designarAlvoCtr.textContent())?.trim() ?? '';
-  if (isInvalidText(designarAlvoNew)) throw new Error(`DesignarAlvo inválido: "${designarAlvoNew}"`);
-  if (designarAlvoNew !== designarAlvoOri) altered.push({ name: 'designarAlvo', locator: designarAlvoCtr });
+  await selectAndTrack(menu, page, 'select2-id_sc_field_retequip_designaralvo-container', ['(selecione)', 'padrão'], 'designarAlvo', designarAlvoOri, 'DesignarAlvo', altered);
 
-  // Validação final (antes de salvar)
   for (const { locator } of altered) {
     await validateFields(locator);
   }
   await menu.locator('#sc_b_upd_t').click();
   await waitForAjax(page);
+
+  //validação extra para o designar atendimento campo grupo/usuario
+  
 }
 
 test('Testar Ajax Estoque', async ({ page }) => {
   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
 
-  test.setTimeout(60_000);
+  test.setTimeout(60000);
 
   await login(page);
 

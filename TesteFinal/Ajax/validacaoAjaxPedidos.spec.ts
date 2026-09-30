@@ -90,7 +90,7 @@ test('Testar Ajax Pedidos', async ({ page }) => {
   const item5 = menu.frameLocator('iframe[name="item_5"]');
   const tb = item5.frameLocator('iframe[name^="TB_iframeContent"]');
 
-  test.setTimeout(50_000);
+  test.setTimeout(50000);
 
   await login(page);
 

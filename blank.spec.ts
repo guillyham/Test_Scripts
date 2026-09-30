@@ -9,19 +9,19 @@ import { fakerPT_BR as faker } from '@faker-js/faker';
 import { debug } from 'node:console';
 
 
+async function cobrNovaRegra(page: Page) {
+  let { menu, tb } = getFrames(page);
+
+}
 
 
 
 test('Run on existing Chrome', async () => {
-  test.setTimeout(80000);
+  test.setTimeout(10000);
   const browser = await chromium.connectOverCDP('http://localhost:9222');
   const context = browser.contexts()[0];
   const page = context.pages()[0];
   const menu = page.frameLocator('iframe[name="app_menu_iframe"]');
 
-  //await contratoCancelamento(page, "8-Multa cancelamento", "14/05/2020");
-
-  //await login(page);
-  //await acessarPlanos(page, menu);
-
+  await cobrNovaRegra(page);
 });
