@@ -71,7 +71,6 @@ async function validacaoAjaxEstoque(page: Page, menu: FrameLocator) {
     // Quando for Topico
     await menu.locator('input[name="retequip_atendtipo"][value="T"]').check();
     await waitForAjax(page);
-
     await selectAndTrack(menu, page, 'select2-id_sc_field_retequip_topflux-container', ['Selecione'], 'topflux', topfluxVlrOri, 'TopFlux', altered);
   }
 
@@ -82,8 +81,7 @@ async function validacaoAjaxEstoque(page: Page, menu: FrameLocator) {
   if (!designarAtdNew || designarAtdNew === 'N') throw new Error(`DesignarAtd inválido: "${designarAtdNew}"`);
   if (designarAtdNew !== designarAtdOri) altered.push({ name: 'designarAtd', locator: menu.locator('#id_sc_field_retequip_designar') });
 
-  await selectAndTrack(menu, page, 'select2-id_sc_field_retequip_designaralvo-container', ['(selecione)', 'padrão'], 'designarAlvo', designarAlvoOri, 'DesignarAlvo', altered);
-
+  const test = await selectAndTrack(menu, page, 'select2-id_sc_field_retequip_designaralvo-container', ['(selecione)', 'padrão'], 'designarAlvo', designarAlvoOri, 'DesignarAlvo', altered);
   for (const { locator } of altered) {
     await validateFields(locator);
   }

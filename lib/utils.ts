@@ -227,8 +227,8 @@ export async function login(page: Page) {
   const usuario = process.env.USUARIO ?? '';
   const senha = process.env.SENHA ?? '';
 
-  await page.goto('https://desenvtestfinal.rbxsoft.com/routerbox/app_login/index.php');
-  //await page.goto('https://desenvtest-deb12.rbxsoft.com/routerbox/app_login/index.php');
+  //await page.goto('https://desenvtestfinal.rbxsoft.com/routerbox/app_login/index.php');
+  await page.goto('https://desenv-deb12.rbxsoft.com/routerbox/app_login/index.php');
   await page.getByRole('textbox', { name: 'Usuário' }).fill(usuario);
   await page.getByRole('textbox', { name: 'Senha' }).fill(senha);
   await page.getByRole('textbox', { name: 'Senha' }).press('Enter');
